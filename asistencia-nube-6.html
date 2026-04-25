@@ -1,0 +1,3857 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Registro de Asistencia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg: #0c0a09;
+    --bg-elev: #1c1917;
+    --bg-card: #292524;
+    --border: #44403c;
+    --border-soft: #292524;
+    --text: #fafaf9;
+    --text-dim: #a8a29e;
+    --text-muted: #78716c;
+    --accent: #fbbf24;
+    --accent-dim: #92400e;
+    --success: #34d399;
+    --success-dim: #064e3b;
+    --warn: #fb923c;
+    --warn-dim: #7c2d12;
+    --error: #f87171;
+    --error-dim: #7f1d1d;
+    --info: #60a5fa;
+    --info-dim: #1e3a8a;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 20px 60px -20px rgba(0,0,0,0.6), 0 8px 20px -10px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow-x: hidden; }
+  body {
+    font-family: 'Geist', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251, 191, 36, 0.08), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(96, 165, 250, 0.05), transparent 70%);
+    background-attachment: fixed;
+  }
+
+  .display { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.02em; }
+  .mono { font-family: 'Geist Mono', monospace; }
+
+  .app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+  .header {
+    padding: 20px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-soft);
+    backdrop-filter: blur(10px);
+    background: rgba(12, 10, 9, 0.7);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-brand-logo {
+    width: 32px; height: 32px;
+    background: var(--accent); border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--bg); font-weight: 700; font-size: 16px;
+  }
+  .header-brand-text { font-size: 14px; color: var(--text-dim); letter-spacing: 0.02em; }
+  .header-brand-text strong { color: var(--text); font-weight: 500; }
+  .header-time { font-family: 'Geist Mono', monospace; color: var(--text-dim); font-size: 13px; text-align: right; }
+  .header-time-clock { color: var(--text); font-size: 15px; letter-spacing: 0.05em; }
+  .header-time-date { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+
+  .conn-indicator {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; padding: 4px 8px;
+    border-radius: 4px; font-family: 'Geist Mono', monospace;
+  }
+  .conn-indicator .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; box-shadow: 0 0 6px currentColor;
+  }
+  .conn-online { color: var(--success); background: rgba(52,211,153,0.08); }
+  .conn-offline { color: var(--warn); background: rgba(251,146,60,0.08); }
+
+  .main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 32px 24px; }
+
+  .btn {
+    font-family: inherit; border: 1px solid var(--border);
+    background: var(--bg-elev); color: var(--text);
+    padding: 12px 22px; border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 14px; font-weight: 500;
+    transition: all 0.15s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { background: var(--bg-card); border-color: var(--text-muted); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+  .btn-primary:hover:not(:disabled) { background: #fcd34d; border-color: #fcd34d; }
+  .btn-success { background: var(--success); color: var(--bg); border-color: var(--success); font-weight: 600; }
+  .btn-success:hover:not(:disabled) { background: #6ee7b7; }
+  .btn-danger { background: transparent; color: var(--error); border-color: var(--error-dim); }
+  .btn-danger:hover:not(:disabled) { background: var(--error-dim); color: var(--text); }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
+  .btn-ghost:hover { color: var(--text); background: var(--bg-elev); }
+  .btn-large { padding: 18px 36px; font-size: 17px; border-radius: 10px; width: 100%; justify-content: center; }
+  .btn-block { width: 100%; justify-content: center; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .field label { font-size: 12px; color: var(--text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }
+  .field input, .field select {
+    font-family: inherit; background: var(--bg);
+    border: 1px solid var(--border); color: var(--text);
+    padding: 12px 14px; border-radius: var(--radius-sm);
+    font-size: 15px; transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+
+  .card { background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 24px; }
+
+  .employee-view { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+
+  .greeting { text-align: center; margin-bottom: 8px; }
+  .greeting-h1 { font-family: 'Instrument Serif', serif; font-size: 44px; line-height: 1.05; color: var(--text); letter-spacing: -0.02em; }
+  .greeting-h1 em { font-style: italic; color: var(--accent); font-weight: 400; }
+  .greeting-sub { color: var(--text-dim); font-size: 14px; margin-top: 8px; }
+
+  .camera-frame {
+    position: relative; width: 100%;
+    aspect-ratio: 1 / 1; max-width: 400px;
+    border-radius: 200px; overflow: hidden;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    box-shadow: var(--shadow);
+    transition: border-color 0.4s ease;
+  }
+  .camera-frame.recognized { border-color: var(--success); box-shadow: 0 0 0 6px rgba(52, 211, 153, 0.15), var(--shadow); }
+  .camera-frame.detecting { border-color: var(--accent); }
+  .camera-frame.error { border-color: var(--error); }
+  .camera-frame video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); background: #000; }
+  .camera-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none; }
+  .camera-overlay-message {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 16px; text-align: center;
+    background: linear-gradient(to top, rgba(12,10,9,0.92), transparent);
+    color: var(--text); font-size: 13px; font-weight: 500; pointer-events: none;
+  }
+
+  .status-row { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .status-pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: var(--bg-elev); border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm); font-size: 12px; color: var(--text-dim);
+  }
+  .status-pill.ok { border-color: var(--success-dim); color: var(--success); background: rgba(52, 211, 153, 0.05); }
+  .status-pill.warn { border-color: var(--warn-dim); color: var(--warn); background: rgba(251, 146, 60, 0.05); }
+  .status-pill.err { border-color: var(--error-dim); color: var(--error); background: rgba(248, 113, 113, 0.05); }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+
+  .action-card {
+    width: 100%; background: var(--bg-elev);
+    border: 1px solid var(--border-soft); border-radius: var(--radius);
+    padding: 24px; text-align: center; transition: all 0.3s ease;
+  }
+  .action-card.ready { border-color: var(--accent); background: linear-gradient(180deg, rgba(251, 191, 36, 0.08), var(--bg-elev)); }
+  .action-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 8px; }
+  .action-card-event { font-family: 'Instrument Serif', serif; font-size: 32px; line-height: 1.1; margin-bottom: 4px; }
+  .action-card-event em { color: var(--accent); font-style: italic; }
+  .action-card-time { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--text-dim); margin-bottom: 18px; }
+
+  .toast-container { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 20px;
+    box-shadow: var(--shadow); color: var(--text);
+    font-size: 14px; animation: toastIn 0.3s ease;
+    pointer-events: auto; min-width: 280px; max-width: 400px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .toast.success { border-color: var(--success-dim); }
+  .toast.success::before { content: '✓'; color: var(--success); font-weight: bold; font-size: 18px; }
+  .toast.error { border-color: var(--error-dim); }
+  .toast.error::before { content: '✕'; color: var(--error); font-weight: bold; font-size: 18px; }
+  .toast.info::before { content: 'ⓘ'; color: var(--info); font-weight: bold; font-size: 18px; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    z-index: 100; display: grid; place-items: center;
+    padding: 20px; animation: fadeIn 0.2s ease;
+  }
+  .modal {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px;
+    max-width: 460px; width: 100%; max-height: 90vh; overflow-y: auto;
+    box-shadow: var(--shadow);
+  }
+  .modal h2 { font-family: 'Instrument Serif', serif; font-size: 28px; margin-bottom: 6px; font-weight: 400; }
+  .modal-sub { color: var(--text-dim); font-size: 14px; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .admin-shell { width: 100%; max-width: 1100px; }
+  .admin-tabs {
+    display: flex; gap: 4px;
+    border-bottom: 1px solid var(--border-soft); margin-bottom: 24px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .admin-tab {
+    background: transparent; border: none; color: var(--text-dim);
+    padding: 12px 18px; cursor: pointer; font-family: inherit;
+    font-size: 14px; font-weight: 500;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    white-space: nowrap; transition: all 0.15s;
+  }
+  .admin-tab:hover { color: var(--text); }
+  .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+  .section-title { font-family: 'Instrument Serif', serif; font-size: 32px; font-weight: 400; letter-spacing: -0.01em; }
+  .section-sub { color: var(--text-dim); font-size: 14px; margin-top: 2px; }
+
+  .emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .emp-card {
+    background: var(--bg-elev); border: 1px solid var(--border-soft);
+    border-radius: var(--radius); padding: 18px;
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color 0.15s;
+  }
+  .emp-card:hover { border-color: var(--border); }
+  .emp-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--bg-card) center/cover; border: 1px solid var(--border); flex-shrink: 0; }
+  .emp-info { flex: 1; min-width: 0; }
+  .emp-name { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .emp-meta { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+  .emp-action { color: var(--text-muted); cursor: pointer; padding: 4px 8px; border-radius: 4px; }
+  .emp-action:hover { background: var(--error-dim); color: var(--text); }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-icon { font-size: 36px; opacity: 0.3; margin-bottom: 12px; }
+
+  .reports-filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: flex-end; }
+  .reports-filters .field { margin-bottom: 0; min-width: 150px; }
+  .reports-table { width: 100%; background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--radius); overflow: hidden; }
+  .reports-table table { width: 100%; border-collapse: collapse; }
+  .reports-table th { text-align: left; padding: 12px 16px; background: var(--bg-card); color: var(--text-dim); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border); }
+  .reports-table td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid var(--border-soft); }
+  .reports-table tr:last-child td { border-bottom: none; }
+  .reports-table .mono { font-family: 'Geist Mono', monospace; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: 'Geist Mono', monospace; text-transform: uppercase; letter-spacing: 0.04em; }
+  .badge-success { background: var(--success-dim); color: var(--success); }
+  .badge-warn { background: var(--warn-dim); color: var(--warn); }
+  .badge-error { background: var(--error-dim); color: var(--error); }
+  .badge-muted { background: var(--bg-card); color: var(--text-muted); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat { background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 18px; }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+  .stat-value { font-family: 'Instrument Serif', serif; font-size: 32px; margin-top: 6px; }
+  .stat-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+  /* ---------- Nómina ---------- */
+  .payroll-employees { display: flex; flex-direction: column; gap: 12px; }
+  .payroll-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .payroll-card:hover { border-color: var(--border); }
+  .payroll-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .payroll-card-header:hover { background: var(--bg-card); }
+  .payroll-day-dots {
+    display: flex;
+    gap: 3px;
+    margin-right: 12px;
+  }
+  .payroll-card-detail {
+    border-top: 1px solid var(--border-soft);
+    padding: 20px;
+    background: var(--bg);
+  }
+  @media (max-width: 700px) {
+    .payroll-day-dots { display: none; }
+    .payroll-card-header { padding: 14px 16px; gap: 10px; }
+  }
+
+  .emp-card { cursor: pointer; }
+  .emp-card[data-action="edit-emp"]:hover { border-color: var(--accent); }
+
+  .settings-section { background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+  .settings-section h3 { font-family: 'Instrument Serif', serif; font-size: 22px; font-weight: 400; margin-bottom: 4px; }
+  .settings-section .sub { color: var(--text-dim); font-size: 13px; margin-bottom: 16px; }
+
+  .schedule-grid { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: center; }
+  .schedule-grid label { font-size: 14px; }
+  .schedule-grid input { width: 110px; }
+
+  .loader-screen { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; z-index: 500; padding: 20px; }
+  .loader-content { text-align: center; max-width: 400px; }
+  .loader-spinner { width: 32px; height: 32px; margin: 0 auto 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-text { color: var(--text-dim); font-size: 14px; }
+
+  .capture-frame { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .capture-frame video, .capture-frame canvas { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  .capture-frame canvas { position: absolute; inset: 0; pointer-events: none; }
+
+  .capture-progress { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+  .capture-dot { width: 28px; height: 6px; border-radius: 3px; background: var(--border); transition: all 0.3s; }
+  .capture-dot.done { background: var(--success); }
+  .capture-dot.active { background: var(--accent); }
+
+  .footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 12px; }
+  .footer a { color: var(--text-dim); text-decoration: none; }
+  .footer a:hover { color: var(--accent); }
+
+  .config-error {
+    max-width: 600px; margin: 40px auto;
+    background: var(--bg-elev); border: 1px solid var(--error-dim);
+    border-radius: var(--radius); padding: 32px;
+  }
+  .config-error h2 { font-family: 'Instrument Serif', serif; font-size: 28px; margin-bottom: 8px; color: var(--error); }
+  .config-error code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--accent); }
+  .config-error pre { background: var(--bg); padding: 14px; border-radius: 6px; font-family: 'Geist Mono', monospace; font-size: 12px; overflow-x: auto; margin: 12px 0; color: var(--text-dim); }
+
+  @media (max-width: 600px) {
+    .header { padding: 14px 16px; }
+    .header-brand-text { display: none; }
+    .greeting-h1 { font-size: 32px; }
+    .camera-frame { max-width: 320px; }
+    .section-title { font-size: 26px; }
+    .reports-table { font-size: 12px; overflow-x: auto; }
+    .reports-table table { min-width: 600px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loader" class="loader-screen">
+  <div class="loader-content">
+    <div class="loader-spinner"></div>
+    <div class="loader-text" id="loader-text">Iniciando…</div>
+  </div>
+</div>
+
+<div id="app" class="app" style="display:none;"></div>
+<div id="toast-container" class="toast-container"></div>
+<div id="modal-root"></div>
+
+<!-- ==========================================================================
+     CONFIGURACIÓN DE FIREBASE  ←  EDITA ESTA SECCIÓN
+     Instrucciones detalladas en el mensaje de Claude.
+     ========================================================================== -->
+<script>
+  window.FIREBASE_CONFIG = {
+    apiKey: "PEGA_AQUI_TU_apiKey",
+    authDomain: "PEGA_AQUI_TU_authDomain",
+    projectId: "PEGA_AQUI_TU_projectId",
+    storageBucket: "PEGA_AQUI_TU_storageBucket",
+    messagingSenderId: "PEGA_AQUI_TU_messagingSenderId",
+    appId: "PEGA_AQUI_TU_appId"
+  };
+</script>
+
+<!-- ==========================================================================
+     LÓGICA DEL SISTEMA — no necesitas tocar nada de aquí en adelante
+     ========================================================================== -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
+import {
+  getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc,
+  addDoc, query, where, onSnapshot, serverTimestamp, Timestamp,
+  enableIndexedDbPersistence, orderBy
+} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+  setPersistence, browserLocalPersistence
+} from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
+
+/* ============================================================
+   VERIFICAR CONFIGURACIÓN
+   ============================================================ */
+const cfg = window.FIREBASE_CONFIG || {};
+const isConfigured = cfg.apiKey && !cfg.apiKey.startsWith('PEGA_AQUI');
+
+if (!isConfigured) {
+  document.getElementById('loader').innerHTML = `
+    <div class="config-error">
+      <h2>⚙ Falta configuración</h2>
+      <p style="color: var(--text-dim); margin-bottom: 16px;">
+        Esta página necesita la configuración de tu proyecto Firebase para funcionar.
+      </p>
+      <p style="color: var(--text-dim); margin-bottom: 8px;">Sigue las instrucciones que te dio Claude para:</p>
+      <ol style="color: var(--text-dim); padding-left: 20px; line-height: 1.8;">
+        <li>Crear un proyecto en <code>console.firebase.google.com</code></li>
+        <li>Activar Firestore y Authentication</li>
+        <li>Copiar tu configuración y pegarla en este archivo</li>
+      </ol>
+      <p style="color: var(--text-dim); margin-top: 16px;">
+        Busca en el código HTML el bloque que dice <code>FIREBASE_CONFIG</code>
+        y reemplaza los valores <code>"PEGA_AQUI_..."</code> con los tuyos.
+      </p>
+    </div>`;
+  throw new Error('Firebase no configurado');
+}
+
+/* ============================================================
+   CONSTANTES
+   ============================================================ */
+const DEFAULT_SCHEDULE = {
+  entrada:          { label: 'Entrada',           target: '09:00', icon: '🌅' },
+  desayuno_inicio:  { label: 'Salida a desayuno', target: '10:30', icon: '☕' },
+  desayuno_fin:     { label: 'Regreso desayuno',  target: '11:00', icon: '↩' },
+  comida_inicio:    { label: 'Salida a comida',   target: '14:30', icon: '🍽' },
+  comida_fin:       { label: 'Regreso comida',    target: '15:30', icon: '↩' },
+  salida:           { label: 'Salida',             target: '19:00', icon: '🌙' }
+};
+const EVENT_ORDER = ['entrada','desayuno_inicio','desayuno_fin','comida_inicio','comida_fin','salida'];
+const TOLERANCE_MIN = 10;
+const FACE_MATCH_THRESHOLD = 0.5;
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+const REGISTRATION_SHOTS = 3;
+
+// Configuración de nómina por defecto
+const DEFAULT_PAYROLL_CONFIG = {
+  daysPerWeek: 5,                  // sueldo / 5 días
+  halfDayCutoff: '14:30',          // hasta esta hora cuenta como medio día
+  earlyLeaveCutoff: '14:30',       // si se va antes de esta hora = medio día
+  retardoFreebies: 2,              // primeros 2 retardos no descuentan
+  retardoExtraCharge: 100,         // pesos a descontar por cada retardo después del 3ro
+  weekStartsOn: 1                  // 1 = lunes
+};
+const PAYROLL_ENTRY_TYPES = {
+  prestamo: { label: 'Préstamo', icon: '🏦', isDeduction: true },
+  adelanto: { label: 'Adelanto de nómina', icon: '💸', isDeduction: true },
+  otro: { label: 'Otro descuento', icon: '➖', isDeduction: true },
+  bono: { label: 'Bono / Otro pago', icon: '➕', isDeduction: false }
+};
+
+// Vacaciones según LFT (años de antigüedad → días)
+const VACATION_DAYS_BY_YEAR = {
+  1: 12, 2: 14, 3: 16, 4: 18, 5: 20,
+  6: 22, 7: 22, 8: 22, 9: 22, 10: 22,
+  11: 24, 12: 24, 13: 24, 14: 24, 15: 24,
+  16: 26, 17: 26, 18: 26, 19: 26, 20: 26
+};
+// Para años > 20, se calcula como: 26 + 2 * floor((años - 20) / 5)
+function getVacationDaysForYear(years) {
+  if (years < 1) return 0;
+  if (years <= 20) return VACATION_DAYS_BY_YEAR[years] || 26;
+  return 26 + 2 * Math.floor((years - 20) / 5);
+}
+
+// Texto recibo nómina (texto exacto solicitado)
+const RECEIPT_LEGEND = `Recibí del Arq. Luis Joaquín Gutiérrez Berumen, la cantidad abajo descrita y en la cual estoy conforme que no se me queda a deber ninguna cantidad de dinero por concepto de pago de salario, horas extras, parte proporcional de aguinaldo, vacaciones, prima vacacional, séptimo día, día de asueto oficial y cualquier otra prestación que por ley me corresponda.`;
+
+// Convertir número a letras (para el recibo)
+function numberToWords(n) {
+  if (n === 0) return 'cero pesos';
+  const ones = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez',
+    'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve',
+    'veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis',
+    'veintisiete', 'veintiocho', 'veintinueve'];
+  const tens = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+  const hundreds = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+
+  function under1000(num) {
+    if (num === 100) return 'cien';
+    let s = '';
+    if (num >= 100) { s += hundreds[Math.floor(num / 100)] + ' '; num %= 100; }
+    if (num < 30) s += ones[num];
+    else {
+      s += tens[Math.floor(num / 10)];
+      if (num % 10) s += ' y ' + ones[num % 10];
+    }
+    return s.trim();
+  }
+
+  const intPart = Math.floor(n);
+  const cents = Math.round((n - intPart) * 100);
+  let words = '';
+
+  if (intPart === 0) words = 'cero';
+  else if (intPart < 1000) words = under1000(intPart);
+  else if (intPart < 1000000) {
+    const thousands = Math.floor(intPart / 1000);
+    const rest = intPart % 1000;
+    words = (thousands === 1 ? 'mil' : under1000(thousands) + ' mil');
+    if (rest > 0) words += ' ' + under1000(rest);
+  } else {
+    const millions = Math.floor(intPart / 1000000);
+    const rest = intPart % 1000000;
+    words = (millions === 1 ? 'un millón' : under1000(millions) + ' millones');
+    if (rest >= 1000) {
+      const t = Math.floor(rest / 1000);
+      words += ' ' + (t === 1 ? 'mil' : under1000(t) + ' mil');
+    }
+    const r2 = rest % 1000;
+    if (r2 > 0) words += ' ' + under1000(r2);
+  }
+
+  return `${words} pesos ${String(cents).padStart(2,'0')}/100 M.N.`;
+}
+
+/* ============================================================
+   FIREBASE INIT
+   ============================================================ */
+const app = initializeApp(window.FIREBASE_CONFIG);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Persistencia local de auth (admin se queda logueado)
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+// Persistencia offline para Firestore (funciona sin internet)
+try {
+  await enableIndexedDbPersistence(db);
+} catch (e) {
+  console.warn('Offline persistence:', e.code);
+}
+
+/* ============================================================
+   API DE DATOS (Firestore)
+   ============================================================ */
+const API = {
+  // ---------- Config ----------
+  async getConfig() {
+    const snap = await getDoc(doc(db, 'config', 'main'));
+    if (!snap.exists()) {
+      return {
+        workLocation: null,
+        schedule: DEFAULT_SCHEDULE,
+        requireLocation: true,
+        payroll: DEFAULT_PAYROLL_CONFIG
+      };
+    }
+    const data = snap.data();
+    return {
+      workLocation: data.workLocation || null,
+      schedule: data.schedule || DEFAULT_SCHEDULE,
+      requireLocation: data.requireLocation !== false,
+      payroll: { ...DEFAULT_PAYROLL_CONFIG, ...(data.payroll || {}) }
+    };
+  },
+  async setConfig(c) {
+    await setDoc(doc(db, 'config', 'main'), c, { merge: true });
+  },
+
+  // ---------- Empleados ----------
+  async getEmployees() {
+    const snap = await getDocs(collection(db, 'employees'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+  async getEmployee(id) {
+    const snap = await getDoc(doc(db, 'employees', id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  },
+  async addEmployee(emp) {
+    const ref = doc(collection(db, 'employees'));
+    const descriptorsMap = {};
+    emp.descriptors.forEach((d, i) => { descriptorsMap['d' + i] = d; });
+    await setDoc(ref, {
+      name: emp.name,
+      descriptors: descriptorsMap,
+      descriptorCount: emp.descriptors.length,
+      photo: emp.photo,
+      weeklySalary: emp.weeklySalary || 0,
+      hourlyOvertimeRate: emp.hourlyOvertimeRate || 0,
+      extraDayRate: emp.extraDayRate || 0,
+      startDate: emp.startDate || new Date().toISOString().slice(0, 10),
+      registeredAt: new Date().toISOString()
+    });
+    return ref.id;
+  },
+  async updateEmployee(id, updates) {
+    await setDoc(doc(db, 'employees', id), updates, { merge: true });
+  },
+  async deleteEmployee(id) {
+    await deleteDoc(doc(db, 'employees', id));
+  },
+
+  // ---------- Nómina: ajustes manuales (faltas/medio día/extras) por día/empleado ----------
+  // Documento: payroll_adjustments/{weekStart}/items/{empId}_{date}
+  async setDayAdjustment(weekStart, empId, date, adjustment) {
+    const id = `${empId}_${date}`;
+    await setDoc(doc(db, 'payroll_adjustments', weekStart, 'items', id), {
+      empId, date, ...adjustment
+    });
+  },
+  async getWeekAdjustments(weekStart) {
+    try {
+      const snap = await getDocs(collection(db, 'payroll_adjustments', weekStart, 'items'));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) { return []; }
+  },
+
+  // ---------- Nómina: descuentos y bonos manuales por semana/empleado ----------
+  // Documento: payroll_entries/{weekStart}/items/{auto-id}
+  async addPayrollEntry(weekStart, entry) {
+    const ref = await addDoc(collection(db, 'payroll_entries', weekStart, 'items'), {
+      ...entry,
+      createdAt: new Date().toISOString()
+    });
+    return ref.id;
+  },
+  async deletePayrollEntry(weekStart, entryId) {
+    await deleteDoc(doc(db, 'payroll_entries', weekStart, 'items', entryId));
+  },
+  async getWeekEntries(weekStart) {
+    try {
+      const snap = await getDocs(collection(db, 'payroll_entries', weekStart, 'items'));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) { return []; }
+  },
+
+  // ---------- Nómina: cierres de semana (snapshot guardado) ----------
+  async closePayrollWeek(weekStart, snapshot) {
+    await setDoc(doc(db, 'payroll_closed', weekStart), {
+      ...snapshot,
+      closedAt: new Date().toISOString()
+    });
+  },
+  async getClosedWeek(weekStart) {
+    const snap = await getDoc(doc(db, 'payroll_closed', weekStart));
+    return snap.exists() ? snap.data() : null;
+  },
+  async getAllClosedWeeks() {
+    const snap = await getDocs(collection(db, 'payroll_closed'));
+    return snap.docs.map(d => ({ weekStart: d.id, ...d.data() }));
+  },
+
+  // ---------- PROYECTOS ----------
+  async getProjects() {
+    const snap = await getDocs(collection(db, 'projects'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+  async addProject(name) {
+    const ref = await addDoc(collection(db, 'projects'), {
+      name,
+      active: true,
+      createdAt: new Date().toISOString()
+    });
+    return ref.id;
+  },
+  async updateProject(id, updates) {
+    await setDoc(doc(db, 'projects', id), updates, { merge: true });
+  },
+  async deleteProject(id) {
+    await deleteDoc(doc(db, 'projects', id));
+  },
+
+  // ---------- ASIGNACIÓN DE PROYECTO POR MEDIO DÍA ----------
+  // Documento: project_assignments/{date}/items/{empId}
+  // { morning: projectId, afternoon: projectId }
+  async setProjectAssignment(date, empId, slot, projectId) {
+    const docRef = doc(db, 'project_assignments', date, 'items', empId);
+    const snap = await getDoc(docRef);
+    const current = snap.exists() ? snap.data() : {};
+    current[slot] = projectId; // slot = 'morning' | 'afternoon'
+    await setDoc(docRef, current, { merge: true });
+  },
+  async getDateAssignments(date) {
+    try {
+      const snap = await getDocs(collection(db, 'project_assignments', date, 'items'));
+      return snap.docs.map(d => ({ empId: d.id, ...d.data() }));
+    } catch (e) { return []; }
+  },
+  async getDateRangeAssignments(fromDate, toDate) {
+    const dates = [];
+    const start = new Date(fromDate + 'T00:00:00');
+    const end = new Date(toDate + 'T00:00:00');
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const result = {};
+    await Promise.all(dates.map(async (date) => {
+      const items = await this.getDateAssignments(date);
+      if (items.length > 0) result[date] = items;
+    }));
+    return result;
+  },
+
+  // ---------- PRÉSTAMOS ----------
+  async getLoans(empId = null) {
+    const snap = await getDocs(collection(db, 'loans'));
+    let loans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (empId) loans = loans.filter(l => l.empId === empId);
+    return loans;
+  },
+  async addLoan(loan) {
+    const ref = await addDoc(collection(db, 'loans'), {
+      ...loan,
+      paidAmount: 0,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    });
+    return ref.id;
+  },
+  async updateLoan(id, updates) {
+    await setDoc(doc(db, 'loans', id), updates, { merge: true });
+  },
+  async deleteLoan(id) {
+    await deleteDoc(doc(db, 'loans', id));
+  },
+  // Pagos a préstamos (cuando se descuenta una semana)
+  async addLoanPayment(loanId, payment) {
+    const ref = await addDoc(collection(db, 'loans', loanId, 'payments'), {
+      ...payment,
+      createdAt: new Date().toISOString()
+    });
+    return ref.id;
+  },
+  async getLoanPayments(loanId) {
+    const snap = await getDocs(collection(db, 'loans', loanId, 'payments'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  // ---------- VACACIONES ----------
+  async getVacations(empId = null) {
+    const snap = await getDocs(collection(db, 'vacations'));
+    let vacs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (empId) vacs = vacs.filter(v => v.empId === empId);
+    return vacs;
+  },
+  async addVacation(vacation) {
+    const ref = await addDoc(collection(db, 'vacations'), {
+      ...vacation,
+      createdAt: new Date().toISOString()
+    });
+    return ref.id;
+  },
+  async deleteVacation(id) {
+    await deleteDoc(doc(db, 'vacations', id));
+  },
+  subscribeEmployees(cb) {
+    return onSnapshot(collection(db, 'employees'), (snap) => {
+      cb(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  },
+
+  // ---------- Asistencia ----------
+  async addEvent(empId, eventType, lat, lng) {
+    const date = todayStr();
+    const ref = await addDoc(collection(db, 'attendance', date, 'events'), {
+      empId,
+      type: eventType,
+      timestamp: new Date().toISOString(),
+      serverTime: serverTimestamp(),
+      lat, lng
+    });
+    return ref.id;
+  },
+  async getEventsForDate(date) {
+    const snap = await getDocs(collection(db, 'attendance', date, 'events'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+  async getEventsForEmployeeOnDate(empId, date) {
+    const all = await this.getEventsForDate(date);
+    return all.filter(e => e.empId === empId);
+  },
+  subscribeEventsForDate(date, cb) {
+    return onSnapshot(collection(db, 'attendance', date, 'events'), (snap) => {
+      cb(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  },
+  async getDateRangeEvents(fromDate, toDate) {
+    // Genera lista de fechas y consulta cada una
+    const dates = [];
+    const start = new Date(fromDate + 'T00:00:00');
+    const end = new Date(toDate + 'T00:00:00');
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const result = {};
+    await Promise.all(dates.map(async (date) => {
+      const events = await this.getEventsForDate(date);
+      if (events.length > 0) result[date] = events;
+    }));
+    return result;
+  }
+};
+
+/* ============================================================
+   UTILIDADES
+   ============================================================ */
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtTime(iso) { return new Date(iso).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', hour12:false }); }
+function fmtTimeWithSec(iso) { return new Date(iso).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }); }
+function fmtDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+}
+function isWeekday(date = new Date()) { const d = date.getDay(); return d >= 1 && d <= 5; }
+function distanceMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000, toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function minutesBetween(t1, t2) {
+  const [h1, m1] = t1.split(':').map(Number);
+  const [h2, m2] = t2.split(':').map(Number);
+  return (h2 * 60 + m2) - (h1 * 60 + m1);
+}
+function timeFromIso(iso) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function eventStatus(eventType, iso, schedule) {
+  const target = schedule[eventType].target;
+  const actual = timeFromIso(iso);
+  const diff = minutesBetween(target, actual);
+  const isReturn = ['entrada','desayuno_fin','comida_fin'].includes(eventType);
+  const isExit = eventType === 'salida';
+  if (isReturn) return diff > TOLERANCE_MIN ? { kind: 'late', minutes: diff } : { kind: 'ok', minutes: diff };
+  if (isExit) return diff < -TOLERANCE_MIN ? { kind: 'early', minutes: diff } : { kind: 'ok', minutes: diff };
+  return { kind: 'ok', minutes: diff };
+}
+
+function nextEventForFromList(events) {
+  const recordedTypes = new Set(events.map(e => e.type));
+  for (const t of EVENT_ORDER) if (!recordedTypes.has(t)) return t;
+  return null;
+}
+
+/* ============================================================
+   UTILIDADES DE NÓMINA
+   ============================================================ */
+function fmtMoney(n) {
+  if (n === null || n === undefined || isNaN(n)) return '$0.00';
+  return '$' + Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+// Devuelve el lunes (formato YYYY-MM-DD) de la semana de la fecha dada
+function getWeekStart(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay(); // 0=dom, 1=lun
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+// Lista de fechas de la semana laboral (lunes a viernes)
+function getWorkWeekDates(weekStart) {
+  const dates = [];
+  const d = new Date(weekStart + 'T00:00:00');
+  for (let i = 0; i < 5; i++) {
+    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+// Lista de TODOS los días de la semana (lun a dom) — para detectar trabajo en sábado/domingo
+function getFullWeekDates(weekStart) {
+  const dates = [];
+  const d = new Date(weekStart + 'T00:00:00');
+  for (let i = 0; i < 7; i++) {
+    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+function dayOfWeek(dateStr) {
+  return new Date(dateStr + 'T00:00:00').getDay(); // 0=dom, 6=sab
+}
+function fmtDateShort(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short' });
+}
+
+// Sugiere el estado del día basado en los eventos del empleado
+// Retorna: 'completo' | 'medio' | 'falta' | 'sin_datos'
+function suggestDayStatus(events, payrollCfg, schedule) {
+  if (!events || events.length === 0) return 'falta';
+  const entrada = events.find(e => e.type === 'entrada');
+  const salida = events.find(e => e.type === 'salida');
+
+  // Si no marcó entrada → falta
+  if (!entrada) return 'falta';
+
+  const entradaTime = timeFromIso(entrada.timestamp);
+  const cutoff = payrollCfg.halfDayCutoff || '14:30';
+
+  // Si llegó después del cutoff → medio día
+  if (minutesBetween(cutoff, entradaTime) > 0) return 'medio';
+
+  // Si no hay salida, sugerir según hora actual o del último evento
+  if (!salida) {
+    // Si tiene varios eventos completos de la mañana, considerar como medio día (si se fue antes de la comida)
+    const ultimoEvento = events.sort((a,b) => b.timestamp.localeCompare(a.timestamp))[0];
+    const ultimaHora = timeFromIso(ultimoEvento.timestamp);
+    const earlyCutoff = payrollCfg.earlyLeaveCutoff || '14:30';
+    if (minutesBetween(ultimaHora, earlyCutoff) > 0) return 'medio';
+    return 'completo';
+  }
+
+  // Tiene entrada y salida — verificar si la salida fue antes del cutoff
+  const salidaTime = timeFromIso(salida.timestamp);
+  const earlyCutoff = payrollCfg.earlyLeaveCutoff || '14:30';
+  if (minutesBetween(salidaTime, earlyCutoff) > 0) return 'medio';
+
+  return 'completo';
+}
+
+// Calcula años de antigüedad
+function yearsOfService(startDate) {
+  if (!startDate) return 0;
+  const start = new Date(startDate + 'T00:00:00');
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+  const m = now.getMonth() - start.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < start.getDate())) years--;
+  return Math.max(0, years);
+}
+
+function vacationBalance(emp, vacations) {
+  const years = yearsOfService(emp.startDate);
+  let totalAccrued = 0;
+  for (let y = 1; y <= years; y++) {
+    totalAccrued += getVacationDaysForYear(y);
+  }
+  const taken = vacations
+    .filter(v => v.empId === emp.id)
+    .reduce((s, v) => s + (v.days || 0), 0);
+  return {
+    years,
+    yearlyDays: years > 0 ? getVacationDaysForYear(years) : 12,
+    totalAccrued,
+    taken,
+    available: totalAccrued - taken
+  };
+}
+
+function getLoanWeeklyDeduction(empId, loans, weekStart) {
+  const activeLoans = loans.filter(l =>
+    l.empId === empId &&
+    l.status === 'active' &&
+    (!l.startWeek || l.startWeek <= weekStart)
+  );
+  return activeLoans.map(loan => {
+    const remaining = loan.totalAmount - (loan.paidAmount || 0);
+    const thisWeekPayment = Math.min(loan.weeklyPayment || 0, remaining);
+    return {
+      loan,
+      payment: thisWeekPayment,
+      remaining: remaining - thisWeekPayment
+    };
+  }).filter(p => p.payment > 0);
+}
+
+// Cuenta minutos trabajados en un día (entrada→salida menos descansos)
+function workedMinutesForDay(events) {
+  const evMap = {};
+  events.forEach(e => evMap[e.type] = e);
+  if (!evMap.entrada || !evMap.salida) return null;
+  const total = (new Date(evMap.salida.timestamp) - new Date(evMap.entrada.timestamp)) / 60000;
+  let breaks = 0;
+  if (evMap.desayuno_inicio && evMap.desayuno_fin)
+    breaks += (new Date(evMap.desayuno_fin.timestamp) - new Date(evMap.desayuno_inicio.timestamp)) / 60000;
+  if (evMap.comida_inicio && evMap.comida_fin)
+    breaks += (new Date(evMap.comida_fin.timestamp) - new Date(evMap.comida_inicio.timestamp)) / 60000;
+  return Math.round(total - breaks);
+}
+
+// Minutos esperados de jornada normal (entrada → salida menos descansos definidos en horario)
+function expectedDayMinutes(schedule) {
+  const startToEnd = minutesBetween(schedule.entrada.target, schedule.salida.target); // 9 a 19 = 600
+  const desayuno = minutesBetween(schedule.desayuno_inicio.target, schedule.desayuno_fin.target);
+  const comida = minutesBetween(schedule.comida_inicio.target, schedule.comida_fin.target);
+  return startToEnd - desayuno - comida; // 600 - 30 - 60 = 510 (8.5 horas)
+}
+
+// Calcula la nómina completa de un empleado para una semana
+function calculatePayroll(emp, weekStart, eventsByDate, adjustments, entries, config, loans = [], vacations = []) {
+  const payrollCfg = config.payroll;
+  const schedule = config.schedule;
+  const workDates = getWorkWeekDates(weekStart);
+  const fullDates = getFullWeekDates(weekStart);
+  const dailyRate = (emp.weeklySalary || 0) / payrollCfg.daysPerWeek;
+  const halfDayRate = dailyRate / 2;
+  const expectedMin = expectedDayMinutes(schedule);
+
+  const adjMap = {};
+  adjustments.forEach(a => { adjMap[a.date] = a; });
+
+  // Mapa de vacaciones por fecha
+  const vacDays = new Set();
+  vacations.filter(v => v.empId === emp.id).forEach(v => {
+    if (v.startDate && v.endDate) {
+      const d = new Date(v.startDate + 'T00:00:00');
+      const end = new Date(v.endDate + 'T00:00:00');
+      while (d <= end) {
+        vacDays.add(d.toISOString().slice(0, 10));
+        d.setDate(d.getDate() + 1);
+      }
+    }
+  });
+
+  const days = workDates.map(date => {
+    const events = (eventsByDate[date] || []).filter(e => e.empId === emp.id);
+    events.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+    const isVacation = vacDays.has(date);
+    const suggested = isVacation ? 'vacaciones' : suggestDayStatus(events, payrollCfg, schedule);
+    const adj = adjMap[date];
+    const status = isVacation ? 'vacaciones' : (adj?.status || suggested);
+
+    let isLate = false, lateMinutes = 0;
+    const entrada = events.find(e => e.type === 'entrada');
+    if (entrada && status !== 'falta' && status !== 'vacaciones') {
+      const st = eventStatus('entrada', entrada.timestamp, schedule);
+      if (st.kind === 'late') { isLate = true; lateMinutes = st.minutes; }
+    }
+
+    let pay = 0;
+    if (status === 'completo' || status === 'vacaciones') pay = dailyRate;
+    else if (status === 'medio') pay = halfDayRate;
+
+    let overtimeMinutes = 0;
+    if (status === 'completo' && events.length > 0) {
+      const worked = workedMinutesForDay(events);
+      if (worked && worked > expectedMin) overtimeMinutes = worked - expectedMin;
+    }
+
+    return {
+      date, events, suggestedStatus: suggested, status,
+      manuallyAdjusted: !!adj, isVacation, isLate, lateMinutes, pay, overtimeMinutes
+    };
+  });
+
+  const extraDays = [];
+  fullDates.forEach(date => {
+    const dow = dayOfWeek(date);
+    if (dow !== 0 && dow !== 6) return;
+    const events = (eventsByDate[date] || []).filter(e => e.empId === emp.id);
+    if (events.some(e => e.type === 'entrada')) {
+      extraDays.push({ date, events });
+    }
+  });
+
+  const basePay = days.reduce((s, d) => s + d.pay, 0);
+  const totalOvertimeMinutes = days.reduce((s, d) => s + d.overtimeMinutes, 0);
+  const overtimeHours = Math.round((totalOvertimeMinutes / 60) * 100) / 100;
+  const overtimePay = overtimeHours * (emp.hourlyOvertimeRate || 0);
+  const extraDayPay = extraDays.length * (emp.extraDayRate || 0);
+
+  const totalRetardos = days.filter(d => d.isLate).length;
+  const retardosCobrables = Math.max(0, totalRetardos - payrollCfg.retardoFreebies);
+  const retardoDiscount = retardosCobrables * payrollCfg.retardoExtraCharge;
+
+  const empEntries = entries.filter(e => e.empId === emp.id);
+  let manualDeductions = 0, manualAdditions = 0;
+  empEntries.forEach(e => {
+    const t = PAYROLL_ENTRY_TYPES[e.type];
+    if (!t) return;
+    if (t.isDeduction) manualDeductions += Number(e.amount || 0);
+    else manualAdditions += Number(e.amount || 0);
+  });
+
+  // PRÉSTAMOS automáticos: descontar abono semanal de cada préstamo activo
+  const loanDeductions = getLoanWeeklyDeduction(emp.id, loans, weekStart);
+  const totalLoanDeduction = loanDeductions.reduce((s, l) => s + l.payment, 0);
+
+  const totalDeductions = retardoDiscount + manualDeductions + totalLoanDeduction;
+  const total = basePay + overtimePay + extraDayPay + manualAdditions - totalDeductions;
+
+  return {
+    employee: emp, weekStart, days, extraDays,
+    basePay, overtimeMinutes: totalOvertimeMinutes, overtimeHours, overtimePay, extraDayPay,
+    totalRetardos, retardosCobrables, retardoDiscount,
+    manualEntries: empEntries, manualDeductions, manualAdditions,
+    loanDeductions, totalLoanDeduction,
+    total, dailyRate, halfDayRate,
+    vacationDaysThisWeek: days.filter(d => d.isVacation).length
+  };
+}
+
+/* ============================================================
+   TOAST & MODAL
+   ============================================================ */
+function toast(msg, kind = 'info', dur = 3500) {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = `<span>${msg}</span>`;
+  c.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.3s'; el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, dur);
+}
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+/* ============================================================
+   CONECTIVIDAD
+   ============================================================ */
+function initConnectivity() {
+  const update = () => {
+    const ind = document.getElementById('conn');
+    if (!ind) return;
+    if (navigator.onLine) {
+      ind.className = 'conn-indicator conn-online';
+      ind.innerHTML = '<span class="dot"></span>en línea';
+    } else {
+      ind.className = 'conn-indicator conn-offline';
+      ind.innerHTML = '<span class="dot"></span>sin conexión';
+    }
+  };
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+  update();
+}
+
+/* ============================================================
+   FACE-API
+   ============================================================ */
+async function loadFaceModels() {
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+  ]);
+}
+
+/* ============================================================
+   GEOLOCATION
+   ============================================================ */
+function getCurrentPosition(opts = {}) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('Geolocalización no soportada'));
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      err => reject(err),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000, ...opts }
+    );
+  });
+}
+
+/* ============================================================
+   ESTADO GLOBAL
+   ============================================================ */
+const State = {
+  view: 'employee',
+  adminTab: 'today',
+  adminUser: null,
+  cameraStream: null,
+  currentLocation: null,
+  locationStatus: 'pending',
+  faceMatcher: null,
+  recognizedEmployee: null,
+  detectionInterval: null,
+  clockInterval: null,
+  employees: [],
+  todayEvents: [],
+  config: null,
+  unsubEmployees: null,
+  unsubTodayEvents: null,
+  reportEmployee: '',
+  reportFrom: null,
+  reportTo: null,
+  reportData: null,
+  capturedDescriptors: [],
+  capturedPhoto: null,
+  // Nómina
+  payrollWeekStart: null,
+  payrollData: null,
+  editingEmpId: null,
+  // Proyectos / Préstamos / Vacaciones
+  projects: [],
+  loans: [],
+  vacations: [],
+  projectAssignments: {}, // { date: [...items] }
+  expandedPayrollEmp: null,
+  // Reportes proyectos
+  projectReportFrom: null,
+  projectReportTo: null
+};
+
+/* ============================================================
+   FACE MATCHER
+   ============================================================ */
+function rebuildFaceMatcher() {
+  if (State.employees.length === 0) { State.faceMatcher = null; return; }
+  const labeled = State.employees
+    .map(e => {
+      // Soportar tanto formato nuevo (objeto) como viejo (array) por compatibilidad
+      let descriptorArrays = [];
+      if (e.descriptors) {
+        if (Array.isArray(e.descriptors)) {
+          descriptorArrays = e.descriptors;
+        } else if (typeof e.descriptors === 'object') {
+          // Es un objeto { d0: [...], d1: [...] }
+          descriptorArrays = Object.keys(e.descriptors)
+            .sort()
+            .map(k => e.descriptors[k]);
+        }
+      }
+      if (descriptorArrays.length === 0) return null;
+      return new faceapi.LabeledFaceDescriptors(
+        e.id,
+        descriptorArrays.map(d => new Float32Array(d))
+      );
+    })
+    .filter(x => x !== null);
+  State.faceMatcher = labeled.length > 0 ? new faceapi.FaceMatcher(labeled, FACE_MATCH_THRESHOLD) : null;
+}
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+onAuthStateChanged(auth, (user) => {
+  State.adminUser = user;
+  // Si estábamos en login y se autenticó, ir a admin
+  if (user && State.view === 'admin-login') {
+    State.adminTab = 'today';
+    go('admin');
+  }
+  // Si cerró sesión y estaba en admin, volver a employee
+  if (!user && State.view === 'admin') {
+    go('employee');
+  }
+});
+
+/* ============================================================
+   CÁMARA
+   ============================================================ */
+async function startCamera(videoEl) {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+    audio: false
+  });
+  videoEl.srcObject = stream;
+  State.cameraStream = stream;
+  return new Promise(resolve => {
+    videoEl.onloadedmetadata = () => { videoEl.play(); resolve(); };
+  });
+}
+function stopCamera() {
+  if (State.cameraStream) {
+    State.cameraStream.getTracks().forEach(t => t.stop());
+    State.cameraStream = null;
+  }
+}
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+function go(view, params = {}) {
+  stopCamera();
+  if (State.detectionInterval) { clearInterval(State.detectionInterval); State.detectionInterval = null; }
+  if (State.unsubTodayEvents) { State.unsubTodayEvents(); State.unsubTodayEvents = null; }
+  State.view = view;
+  Object.assign(State, params);
+  render();
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+async function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = renderHeader() + '<main class="main">' + await renderView() + '</main>' + renderFooter();
+  attachHandlers();
+  initConnectivity();
+  if (State.view === 'employee') initEmployeeView();
+  if (State.view === 'admin' && State.adminTab === 'employees-add') initCaptureView();
+  if (State.view === 'admin' && State.adminTab === 'today') initTodayLive();
+}
+
+function renderHeader() {
+  const isAdmin = State.view === 'admin';
+  return `
+    <header class="header">
+      <div class="header-brand">
+        <div class="header-brand-logo">A</div>
+        <div class="header-brand-text">
+          <strong>Registro</strong> de Asistencia
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span id="conn" class="conn-indicator conn-online"><span class="dot"></span>en línea</span>
+        <div class="header-time">
+          <div class="header-time-clock" id="live-clock">--:--:--</div>
+          <div class="header-time-date">${new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'short' })}</div>
+        </div>
+        ${isAdmin
+          ? `<button class="btn btn-ghost" data-action="logout">Salir</button>`
+          : `<button class="btn btn-ghost" data-action="open-admin">Admin</button>`}
+      </div>
+    </header>`;
+}
+function renderFooter() {
+  return `<footer class="footer">Sistema de asistencia con sincronización en la nube</footer>`;
+}
+
+async function renderView() {
+  switch (State.view) {
+    case 'admin-login': return renderAdminLogin();
+    case 'admin':       return await renderAdmin();
+    case 'employee':
+    default:            return await renderEmployee();
+  }
+}
+
+/* ============================================================
+   VIEW: EMPLEADO
+   ============================================================ */
+async function renderEmployee() {
+  // Cargar empleados si no están en caché
+  if (!State.unsubEmployees) {
+    State.unsubEmployees = API.subscribeEmployees((emps) => {
+      State.employees = emps;
+      rebuildFaceMatcher();
+    });
+  }
+  if (!State.config) State.config = await API.getConfig();
+  // Esperar primera carga si aún no hay datos
+  if (State.employees.length === 0) {
+    try {
+      State.employees = await API.getEmployees();
+      rebuildFaceMatcher();
+    } catch(e) {}
+  }
+
+  if (State.employees.length === 0) {
+    return `
+      <div class="employee-view">
+        <div class="greeting">
+          <div class="greeting-h1"><em>Casi listo.</em></div>
+          <div class="greeting-sub">Aún no hay empleados registrados. Entra al panel admin para agregar al primero.</div>
+        </div>
+        <button class="btn btn-primary btn-large" data-action="open-admin">Ir al panel admin</button>
+      </div>`;
+  }
+
+  const noLocation = !State.config.workLocation;
+
+  return `
+    <div class="employee-view">
+      <div class="greeting">
+        <div class="greeting-h1">Acércate a la <em>cámara</em></div>
+        <div class="greeting-sub" id="greeting-sub">Te identificaremos automáticamente.</div>
+      </div>
+
+      <div class="camera-frame" id="camera-frame">
+        <video id="emp-video" autoplay muted playsinline></video>
+        <canvas id="emp-canvas"></canvas>
+        <div class="camera-overlay-message" id="cam-msg">Activando cámara…</div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-pill" id="loc-pill"><span class="dot"></span><span id="loc-text">Ubicación: verificando…</span></div>
+        <div class="status-pill" id="face-pill"><span class="dot"></span><span id="face-text">Cámara: iniciando…</span></div>
+      </div>
+
+      <div class="action-card" id="action-card">
+        <div class="action-card-label">Esperando identificación</div>
+        <div class="action-card-event">—</div>
+        <div class="action-card-time">&nbsp;</div>
+      </div>
+
+      ${noLocation ? `
+        <div class="card" style="width:100%; border-color: var(--warn-dim); background: rgba(251,146,60,0.05);">
+          <div style="color: var(--warn); font-size:13px;">
+            ⚠ El administrador aún no ha configurado la ubicación de trabajo. La verificación de ubicación está desactivada.
+          </div>
+        </div>` : ''}
+    </div>`;
+}
+
+async function initEmployeeView() {
+  const video = document.getElementById('emp-video');
+  if (!video) return;
+  const camMsg = document.getElementById('cam-msg');
+  const facePill = document.getElementById('face-pill');
+  const faceText = document.getElementById('face-text');
+  try {
+    await startCamera(video);
+    camMsg.textContent = 'Buscando un rostro…';
+    facePill.classList.add('ok');
+    faceText.textContent = 'Cámara: lista';
+  } catch (e) {
+    camMsg.textContent = 'No se pudo acceder a la cámara';
+    facePill.classList.add('err');
+    faceText.textContent = 'Cámara: bloqueada';
+    return;
+  }
+  checkLocationLoop();
+  startDetectionLoop();
+}
+
+async function checkLocationLoop() {
+  const pill = document.getElementById('loc-pill');
+  const txt = document.getElementById('loc-text');
+  if (!pill) return;
+
+  if (!State.config.workLocation) {
+    pill.classList.add('warn');
+    txt.textContent = 'Ubicación no configurada';
+    State.locationStatus = 'ok';
+    return;
+  }
+
+  try {
+    const pos = await getCurrentPosition();
+    State.currentLocation = pos;
+    const wl = State.config.workLocation;
+    const dist = distanceMeters(pos.lat, pos.lng, wl.lat, wl.lng);
+    if (dist <= wl.radius) {
+      pill.classList.remove('err','warn'); pill.classList.add('ok');
+      txt.textContent = `Ubicación: en zona (${Math.round(dist)}m)`;
+      State.locationStatus = 'ok';
+    } else {
+      pill.classList.remove('ok','warn'); pill.classList.add('err');
+      txt.textContent = `Fuera de zona (${Math.round(dist)}m)`;
+      State.locationStatus = 'far';
+    }
+  } catch (e) {
+    pill.classList.add('err');
+    txt.textContent = 'Ubicación: bloqueada';
+    State.locationStatus = 'denied';
+  }
+  setTimeout(checkLocationLoop, 30000);
+}
+
+function startDetectionLoop() {
+  const video = document.getElementById('emp-video');
+  const canvas = document.getElementById('emp-canvas');
+  if (!video || !canvas) return;
+  const frame = document.getElementById('camera-frame');
+  const camMsg = document.getElementById('cam-msg');
+  let busy = false;
+
+  State.detectionInterval = setInterval(async () => {
+    if (busy || !video.videoWidth) return;
+    busy = true;
+    try {
+      const detection = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      const displaySize = { width: video.clientWidth, height: video.clientHeight };
+      faceapi.matchDimensions(canvas, displaySize);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!detection) {
+        frame.classList.remove('recognized','detecting');
+        camMsg.textContent = 'Buscando un rostro…';
+        State.recognizedEmployee = null;
+        await renderActionCard(null);
+      } else {
+        const resized = faceapi.resizeResults(detection, displaySize);
+        const box = resized.detection.box;
+        let recognized = null;
+        if (State.faceMatcher) {
+          const match = State.faceMatcher.findBestMatch(detection.descriptor);
+          if (match.label !== 'unknown') {
+            recognized = State.employees.find(e => e.id === match.label);
+          }
+        }
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = recognized ? '#34d399' : '#fbbf24';
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+        if (recognized) {
+          frame.classList.add('recognized');
+          frame.classList.remove('detecting');
+          camMsg.textContent = `Hola, ${recognized.name}`;
+          if (State.recognizedEmployee?.id !== recognized.id) {
+            State.recognizedEmployee = recognized;
+            await renderActionCard(recognized);
+          }
+        } else {
+          frame.classList.add('detecting');
+          frame.classList.remove('recognized');
+          camMsg.textContent = 'Rostro detectado — no reconocido';
+          State.recognizedEmployee = null;
+          await renderActionCard(null, 'unknown');
+        }
+      }
+    } catch (e) {
+      console.warn('detect err', e);
+    } finally {
+      busy = false;
+    }
+  }, 600);
+}
+
+async function renderActionCard(employee, mode) {
+  const card = document.getElementById('action-card');
+  if (!card) return;
+
+  if (!employee && mode === 'unknown') {
+    card.className = 'action-card';
+    card.innerHTML = `
+      <div class="action-card-label">No reconocido</div>
+      <div class="action-card-event">Rostro <em>desconocido</em></div>
+      <div class="action-card-time">Pídele al administrador que te registre</div>`;
+    return;
+  }
+  if (!employee) {
+    card.className = 'action-card';
+    card.innerHTML = `
+      <div class="action-card-label">Esperando identificación</div>
+      <div class="action-card-event">—</div>
+      <div class="action-card-time">&nbsp;</div>`;
+    return;
+  }
+
+  // Obtener eventos de hoy del empleado
+  let myEvents = [];
+  try {
+    myEvents = await API.getEventsForEmployeeOnDate(employee.id, todayStr());
+  } catch(e) { console.warn(e); }
+
+  const next = nextEventForFromList(myEvents);
+
+  if (!next) {
+    card.className = 'action-card';
+    card.innerHTML = `
+      <div class="action-card-label">${employee.name}</div>
+      <div class="action-card-event"><em>Día completo</em></div>
+      <div class="action-card-time">Ya registraste todos los eventos de hoy</div>`;
+    return;
+  }
+
+  if (!isWeekday()) {
+    card.className = 'action-card';
+    card.innerHTML = `
+      <div class="action-card-label">${employee.name}</div>
+      <div class="action-card-event"><em>Día no laboral</em></div>
+      <div class="action-card-time">El registro es de lunes a viernes</div>`;
+    return;
+  }
+
+  const ev = State.config.schedule[next];
+  const locOk = State.locationStatus === 'ok';
+
+  card.className = 'action-card ready';
+  card.innerHTML = `
+    <div class="action-card-label">${employee.name}</div>
+    <div class="action-card-event">${ev.icon} <em>${ev.label}</em></div>
+    <div class="action-card-time">Horario programado: ${ev.target}</div>
+    ${!locOk ? `<div style="color:var(--error); font-size:12px; margin-bottom:12px;">⚠ Debes estar en la ubicación de trabajo</div>` : ''}
+    <button class="btn btn-success btn-large" data-action="register" data-emp="${employee.id}" data-evt="${next}" ${!locOk ? 'disabled' : ''}>
+      Registrar ${ev.label.toLowerCase()}
+    </button>`;
+}
+
+async function registerEvent(empId, eventType) {
+  if (State.config.workLocation && State.locationStatus !== 'ok') {
+    toast('Debes estar en la ubicación de trabajo', 'error');
+    return;
+  }
+  const myEvents = await API.getEventsForEmployeeOnDate(empId, todayStr());
+  if (myEvents.some(e => e.type === eventType)) {
+    toast('Ya está registrado este evento', 'error');
+    return;
+  }
+  const lat = State.currentLocation?.lat || null;
+  const lng = State.currentLocation?.lng || null;
+  try {
+    await API.addEvent(empId, eventType, lat, lng);
+    const emp = State.employees.find(e => e.id === empId);
+    const evDef = State.config.schedule[eventType];
+    const status = eventStatus(eventType, new Date().toISOString(), State.config.schedule);
+    let suffix = '';
+    if (status.kind === 'late') suffix = ` — ${status.minutes} min de retardo`;
+    if (status.kind === 'early') suffix = ` — saliste ${Math.abs(status.minutes)} min antes`;
+    toast(`${emp.name}: ${evDef.label} registrada${suffix}`, 'success', 5000);
+    setTimeout(() => {
+      if (State.recognizedEmployee?.id === empId) renderActionCard(State.recognizedEmployee);
+    }, 300);
+  } catch (e) {
+    toast('Error al guardar (¿sin conexión?). Se intentará de nuevo.', 'error');
+  }
+}
+
+/* ============================================================
+   VIEW: ADMIN LOGIN
+   ============================================================ */
+function renderAdminLogin() {
+  return `
+    <div class="employee-view">
+      <div class="greeting">
+        <div class="greeting-h1"><em>Panel</em> de administración</div>
+        <div class="greeting-sub">Inicia sesión con tu correo y contraseña</div>
+      </div>
+      <div class="card" style="width:100%;">
+        <div class="field">
+          <label>Correo</label>
+          <input type="email" id="login-email" autocomplete="email">
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" id="login-pwd" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-block" data-action="admin-login">Entrar</button>
+      </div>
+      <button class="btn btn-ghost" data-action="back-employee">← Volver a registro</button>
+    </div>`;
+}
+
+/* ============================================================
+   VIEW: ADMIN
+   ============================================================ */
+async function renderAdmin() {
+  if (!State.adminUser) return renderAdminLogin();
+  if (!State.config) State.config = await API.getConfig();
+  if (State.employees.length === 0) {
+    try { State.employees = await API.getEmployees(); rebuildFaceMatcher(); } catch(e) {}
+  }
+  if (!State.unsubEmployees) {
+    State.unsubEmployees = API.subscribeEmployees((emps) => {
+      State.employees = emps;
+      rebuildFaceMatcher();
+    });
+  }
+
+  const tabs = [
+    { id: 'today',     label: 'Hoy' },
+    { id: 'employees', label: 'Empleados' },
+    { id: 'reports',   label: 'Reportes' },
+    { id: 'payroll',   label: 'Nómina' },
+    { id: 'projects',  label: 'Proyectos' },
+    { id: 'loans',     label: 'Préstamos' },
+    { id: 'vacations', label: 'Vacaciones' },
+    { id: 'settings',  label: 'Configuración' }
+  ];
+  const tabsHtml = tabs.map(t =>
+    `<button class="admin-tab ${State.adminTab === t.id ? 'active' : ''}" data-action="tab" data-tab="${t.id}">${t.label}</button>`
+  ).join('');
+
+  let content = '';
+  switch (State.adminTab) {
+    case 'today':         content = await renderAdminToday(); break;
+    case 'employees':     content = renderAdminEmployees(); break;
+    case 'employees-add': content = renderAdminAddEmployee(); break;
+    case 'employees-edit': content = renderAdminEditEmployee(); break;
+    case 'reports':       content = await renderAdminReports(); break;
+    case 'payroll':       content = await renderAdminPayroll(); break;
+    case 'projects':      content = await renderAdminProjects(); break;
+    case 'project-report': content = await renderAdminProjectReport(); break;
+    case 'loans':         content = await renderAdminLoans(); break;
+    case 'vacations':     content = await renderAdminVacations(); break;
+    case 'settings':      content = renderAdminSettings(); break;
+  }
+  return `<div class="admin-shell">
+    <div class="admin-tabs">${tabsHtml}</div>
+    ${content}
+  </div>`;
+}
+
+/* -- Hoy -- */
+async function renderAdminToday() {
+  const today = todayStr();
+  let events = State.todayEvents;
+  if (!events || !State.unsubTodayEvents) {
+    try { events = await API.getEventsForDate(today); } catch(e) { events = []; }
+    State.todayEvents = events;
+  }
+
+  return renderTodayContent(events);
+}
+
+function renderTodayContent(events) {
+  const today = todayStr();
+  const emps = State.employees;
+  const config = State.config;
+
+  // Agrupar eventos por empleado
+  const byEmp = {};
+  events.forEach(ev => {
+    if (!byEmp[ev.empId]) byEmp[ev.empId] = [];
+    byEmp[ev.empId].push(ev);
+  });
+  Object.values(byEmp).forEach(list => list.sort((a, b) => a.timestamp.localeCompare(b.timestamp)));
+
+  let conEntrada = 0, conRetardo = 0, completos = 0;
+  emps.forEach(emp => {
+    const r = byEmp[emp.id] || [];
+    const ent = r.find(e => e.type === 'entrada');
+    if (ent) {
+      conEntrada++;
+      const st = eventStatus('entrada', ent.timestamp, config.schedule);
+      if (st.kind === 'late') conRetardo++;
+    }
+    const tipos = new Set(r.map(e => e.type));
+    if (EVENT_ORDER.every(t => tipos.has(t))) completos++;
+  });
+
+  const stats = `
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-label">Empleados</div><div class="stat-value">${emps.length}</div><div class="stat-sub">total</div></div>
+      <div class="stat"><div class="stat-label">Asistieron hoy</div><div class="stat-value">${conEntrada}</div><div class="stat-sub">de ${emps.length}</div></div>
+      <div class="stat"><div class="stat-label">Con retardo</div><div class="stat-value" style="color:var(--warn)">${conRetardo}</div><div class="stat-sub">en entrada</div></div>
+      <div class="stat"><div class="stat-label">Día completo</div><div class="stat-value" style="color:var(--success)">${completos}</div><div class="stat-sub">los 6 eventos</div></div>
+    </div>`;
+
+  let rows = '';
+  if (emps.length === 0) {
+    rows = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:40px;">No hay empleados registrados</td></tr>`;
+  } else {
+    rows = emps.map(emp => {
+      const r = byEmp[emp.id] || [];
+      const cells = EVENT_ORDER.map(type => {
+        const ev = r.find(e => e.type === type);
+        if (!ev) return `<td><span class="badge badge-muted">—</span></td>`;
+        const st = eventStatus(type, ev.timestamp, config.schedule);
+        let cls = 'badge-success';
+        if (st.kind === 'late' || st.kind === 'early') cls = 'badge-warn';
+        return `<td><span class="badge ${cls}">${fmtTime(ev.timestamp)}</span></td>`;
+      }).join('');
+      return `<tr><td>${emp.name}</td>${cells}</tr>`;
+    }).join('');
+  }
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Hoy — ${fmtDate(today)}</div>
+        <div class="section-sub">Sincronizado en tiempo real con todos los dispositivos</div>
+      </div>
+    </div>
+    ${stats}
+    <div class="reports-table" id="today-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Empleado</th>
+            <th>Entrada</th>
+            <th>Sale Desayuno</th>
+            <th>Regresa Desayuno</th>
+            <th>Sale Comida</th>
+            <th>Regresa Comida</th>
+            <th>Salida</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function initTodayLive() {
+  // Suscribirse a eventos de hoy en tiempo real
+  if (State.unsubTodayEvents) State.unsubTodayEvents();
+  State.unsubTodayEvents = API.subscribeEventsForDate(todayStr(), (events) => {
+    State.todayEvents = events;
+    if (State.view === 'admin' && State.adminTab === 'today') {
+      const wrapper = document.querySelector('.admin-shell');
+      if (wrapper) {
+        wrapper.innerHTML = `
+          <div class="admin-tabs">${
+            ['today','employees','reports','payroll','projects','loans','vacations','settings'].map(id => {
+              const labels = { today:'Hoy', employees:'Empleados', reports:'Reportes', payroll:'Nómina', projects:'Proyectos', loans:'Préstamos', vacations:'Vacaciones', settings:'Configuración' };
+              return `<button class="admin-tab ${State.adminTab === id ? 'active' : ''}" data-action="tab" data-tab="${id}">${labels[id]}</button>`;
+            }).join('')
+          }</div>` + renderTodayContent(events);
+      }
+    }
+  });
+}
+
+/* -- Empleados -- */
+function renderAdminEmployees() {
+  const emps = State.employees;
+  let body = '';
+  if (emps.length === 0) {
+    body = `<div class="empty"><div class="empty-icon">○</div><div>Aún no hay empleados.</div><div style="margin-top:8px; font-size:13px;">Agrega al primero usando el botón de arriba.</div></div>`;
+  } else {
+    body = `<div class="emp-grid">${
+      emps.map(e => `
+        <div class="emp-card" data-action="edit-emp" data-id="${e.id}">
+          <div class="emp-avatar" style="background-image:url('${e.photo || ''}')"></div>
+          <div class="emp-info">
+            <div class="emp-name">${e.name}</div>
+            <div class="emp-meta">${e.weeklySalary ? fmtMoney(e.weeklySalary) + '/sem' : 'Sin sueldo definido'}</div>
+          </div>
+          <div class="emp-action" data-action="delete-emp" data-id="${e.id}" data-stop="1" title="Eliminar">✕</div>
+        </div>`).join('')
+    }</div>`;
+  }
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Empleados</div>
+        <div class="section-sub">${emps.length} registrado${emps.length === 1 ? '' : 's'}</div>
+      </div>
+      <button class="btn btn-primary" data-action="add-emp">+ Agregar empleado</button>
+    </div>
+    ${body}`;
+}
+
+function renderAdminAddEmployee() {
+  const dots = Array.from({length: REGISTRATION_SHOTS}, (_, i) => {
+    let cls = 'capture-dot';
+    if (i < State.capturedDescriptors.length) cls += ' done';
+    else if (i === State.capturedDescriptors.length) cls += ' active';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  const remaining = REGISTRATION_SHOTS - State.capturedDescriptors.length;
+  const isComplete = State.capturedDescriptors.length === REGISTRATION_SHOTS;
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Nuevo empleado</div>
+        <div class="section-sub">Captura su rostro 3 veces desde ángulos ligeramente distintos</div>
+      </div>
+      <button class="btn btn-ghost" data-action="cancel-add-emp">← Cancelar</button>
+    </div>
+
+    <div style="max-width: 520px;">
+      <div class="field">
+        <label>Nombre completo</label>
+        <input type="text" id="new-emp-name" placeholder="Ej. María González" ${isComplete ? 'autofocus' : ''}>
+      </div>
+
+      <div class="capture-frame">
+        <video id="cap-video" autoplay muted playsinline></video>
+        <canvas id="cap-canvas"></canvas>
+      </div>
+
+      <div class="capture-progress">${dots}</div>
+
+      <div class="status-pill" id="cap-status" style="margin-bottom: 16px;">
+        <span class="dot"></span><span id="cap-status-text">${
+          isComplete
+            ? '✓ Captura completa — escribe el nombre y guarda'
+            : `Toma ${State.capturedDescriptors.length + 1} de ${REGISTRATION_SHOTS} — centra el rostro y captura`
+        }</span>
+      </div>
+
+      ${isComplete ? `
+        <div class="card" style="margin-bottom:16px; background: var(--bg-card);">
+          <div style="font-size:13px; color:var(--text-dim); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.08em; font-weight:500;">💰 Datos de nómina (opcional)</div>
+          <div class="field">
+            <label>Sueldo semanal (MXN)</label>
+            <input type="number" id="new-emp-salary" min="0" step="0.01" placeholder="Ej. 5000">
+          </div>
+          <div class="field">
+            <label>Pago por hora extra (MXN)</label>
+            <input type="number" id="new-emp-hourly" min="0" step="0.01" placeholder="Ej. 80">
+          </div>
+          <div class="field">
+            <label>Pago por día extra trabajado (MXN)</label>
+            <input type="number" id="new-emp-extraday" min="0" step="0.01" placeholder="Ej. 1200">
+          </div>
+          <div style="font-size:12px; color:var(--text-muted);">Puedes editar estos datos después en Empleados.</div>
+        </div>
+      ` : ''}
+
+      <div style="display:flex; gap:8px;">
+        ${isComplete
+          ? `<button class="btn btn-success btn-block" data-action="save-employee">Guardar empleado</button>`
+          : `<button class="btn btn-primary btn-block" data-action="capture-shot" id="cap-btn" disabled>Capturar foto ${State.capturedDescriptors.length + 1}</button>`
+        }
+      </div>
+    </div>`;
+}
+
+function renderAdminEditEmployee() {
+  const emp = State.employees.find(e => e.id === State.editingEmpId);
+  if (!emp) {
+    State.adminTab = 'employees';
+    return renderAdminEmployees();
+  }
+  const balance = vacationBalance(emp, State.vacations);
+  const empLoans = State.loans.filter(l => l.empId === emp.id);
+  const activeLoans = empLoans.filter(l => l.status === 'active');
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Editar empleado</div>
+        <div class="section-sub">${emp.name}</div>
+      </div>
+      <button class="btn btn-ghost" data-action="back-employees">← Volver</button>
+    </div>
+
+    <div style="max-width: 560px;">
+      <div class="card" style="margin-bottom:16px; display:flex; align-items:center; gap:14px;">
+        <div class="emp-avatar" style="background-image:url('${emp.photo || ''}'); width:64px; height:64px;"></div>
+        <div style="flex:1;">
+          <div style="font-size:18px; font-weight:600;">${emp.name}</div>
+          <div style="font-size:13px; color:var(--text-muted);">Registrado ${new Date(emp.registeredAt).toLocaleDateString('es-MX')}</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.08em; font-weight:500;">📅 Antigüedad y vacaciones</div>
+        <div class="field">
+          <label>Fecha de ingreso</label>
+          <input type="date" id="edit-startdate" value="${emp.startDate || ''}">
+        </div>
+        <div style="background:var(--bg); padding:12px; border-radius:6px; font-size:13px; color:var(--text-dim);">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div><strong style="color:var(--text);">${balance.years}</strong> años de antigüedad</div>
+            <div><strong style="color:var(--text);">${balance.yearlyDays}</strong> días/año (LFT)</div>
+            <div><strong style="color:var(--text);">${balance.totalAccrued}</strong> días totales acumulados</div>
+            <div><strong style="color:var(--success);">${balance.available}</strong> días disponibles</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:13px; color:var(--text-dim); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.08em; font-weight:500;">💰 Datos de nómina</div>
+        <div class="field">
+          <label>Sueldo semanal (MXN)</label>
+          <input type="number" id="edit-salary" min="0" step="0.01" value="${emp.weeklySalary || ''}" placeholder="Ej. 5000">
+        </div>
+        <div class="field">
+          <label>Pago por hora extra (MXN)</label>
+          <input type="number" id="edit-hourly" min="0" step="0.01" value="${emp.hourlyOvertimeRate || ''}" placeholder="Ej. 80">
+        </div>
+        <div class="field">
+          <label>Pago por día extra trabajado (MXN)</label>
+          <input type="number" id="edit-extraday" min="0" step="0.01" value="${emp.extraDayRate || ''}" placeholder="Ej. 1200">
+        </div>
+        <button class="btn btn-primary btn-block" data-action="save-emp-edit">Guardar cambios</button>
+      </div>
+
+      ${activeLoans.length > 0 ? `
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-size:13px; color:var(--text-dim); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.08em; font-weight:500;">🏦 Préstamos activos</div>
+          ${activeLoans.map(l => {
+            const remaining = l.totalAmount - (l.paidAmount || 0);
+            const pct = Math.round(((l.paidAmount || 0) / l.totalAmount) * 100);
+            return `<div style="background:var(--bg); padding:12px; border-radius:6px; margin-bottom:8px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <strong>${fmtMoney(l.totalAmount)}</strong>
+                <span style="color:var(--text-muted); font-size:12px;">${pct}% pagado</span>
+              </div>
+              <div style="height:6px; background:var(--bg-card); border-radius:3px; margin-bottom:6px;">
+                <div style="height:100%; width:${pct}%; background:var(--success); border-radius:3px;"></div>
+              </div>
+              <div style="font-size:12px; color:var(--text-dim);">Pendiente: <strong style="color:var(--text);">${fmtMoney(remaining)}</strong> · Abono semanal: ${fmtMoney(l.weeklyPayment)}</div>
+            </div>`;
+          }).join('')}
+          <button class="btn btn-ghost" data-action="goto-loans" style="margin-top:8px;">Ver detalles en pestaña Préstamos →</button>
+        </div>
+      ` : ''}
+    </div>`;
+}
+
+async function initCaptureView() {
+  const video = document.getElementById('cap-video');
+  const status = document.getElementById('cap-status');
+  const statusTxt = document.getElementById('cap-status-text');
+  const btn = document.getElementById('cap-btn');
+  if (!video) return;
+  try {
+    await startCamera(video);
+    status.classList.add('ok');
+    if (btn) btn.disabled = false;
+  } catch (e) {
+    status.classList.add('err');
+    statusTxt.textContent = 'No se pudo acceder a la cámara';
+  }
+}
+
+async function captureShot() {
+  const video = document.getElementById('cap-video');
+  const status = document.getElementById('cap-status');
+  const statusTxt = document.getElementById('cap-status-text');
+  const btn = document.getElementById('cap-btn');
+  btn.disabled = true;
+  statusTxt.textContent = 'Detectando rostro…';
+
+  try {
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+    if (!detection) {
+      status.classList.remove('ok'); status.classList.add('err');
+      statusTxt.textContent = 'No se detectó rostro. Intenta de nuevo.';
+      btn.disabled = false;
+      return;
+    }
+    State.capturedDescriptors.push(Array.from(detection.descriptor));
+
+    // Si es la primera, guardar foto
+    if (State.capturedDescriptors.length === 1) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 80; tempCanvas.height = 80;
+      const ctx = tempCanvas.getContext('2d');
+      const box = detection.detection.box;
+      ctx.drawImage(video, box.x, box.y, box.width, box.height, 0, 0, 80, 80);
+      State.capturedPhoto = tempCanvas.toDataURL('image/jpeg', 0.7);
+    }
+
+    toast(`Foto ${State.capturedDescriptors.length}/${REGISTRATION_SHOTS} capturada`, 'success', 1500);
+    render();
+  } catch (e) {
+    console.error(e);
+    statusTxt.textContent = 'Error. Intenta de nuevo.';
+    btn.disabled = false;
+  }
+}
+
+async function saveEmployee() {
+  const name = document.getElementById('new-emp-name').value.trim();
+  if (!name) { toast('Ingresa el nombre', 'error'); return; }
+  if (State.capturedDescriptors.length < REGISTRATION_SHOTS) {
+    toast('Faltan fotos por capturar', 'error'); return;
+  }
+  const weeklySalary = parseFloat(document.getElementById('new-emp-salary')?.value) || 0;
+  const hourlyOvertimeRate = parseFloat(document.getElementById('new-emp-hourly')?.value) || 0;
+  const extraDayRate = parseFloat(document.getElementById('new-emp-extraday')?.value) || 0;
+  try {
+    await API.addEmployee({
+      name,
+      descriptors: State.capturedDescriptors,
+      photo: State.capturedPhoto,
+      weeklySalary, hourlyOvertimeRate, extraDayRate
+    });
+    toast(`${name} registrado correctamente`, 'success');
+    State.capturedDescriptors = [];
+    State.capturedPhoto = null;
+    stopCamera();
+    State.adminTab = 'employees';
+    render();
+  } catch (e) {
+    toast('Error al guardar: ' + e.message, 'error');
+  }
+}
+
+/* ============================================================
+   VIEW: NÓMINA
+   ============================================================ */
+async function renderAdminPayroll() {
+  if (!State.payrollWeekStart) {
+    State.payrollWeekStart = getWeekStart(todayStr());
+  }
+  const weekStart = State.payrollWeekStart;
+
+  const fullDates = getFullWeekDates(weekStart);
+  const eventsByDate = {};
+  await Promise.all(fullDates.map(async (d) => {
+    eventsByDate[d] = await API.getEventsForDate(d);
+  }));
+  const adjustments = await API.getWeekAdjustments(weekStart);
+  const entries = await API.getWeekEntries(weekStart);
+  // Cargar proyectos, préstamos, vacaciones y asignaciones
+  if (State.projects.length === 0) State.projects = await API.getProjects();
+  State.loans = await API.getLoans();
+  State.vacations = await API.getVacations();
+  const weekAssignments = {};
+  await Promise.all(fullDates.map(async (d) => {
+    weekAssignments[d] = await API.getDateAssignments(d);
+  }));
+  State.projectAssignments = weekAssignments;
+
+  const calculations = State.employees.map(emp =>
+    calculatePayroll(emp, weekStart, eventsByDate, adjustments, entries, State.config, State.loans, State.vacations)
+  );
+
+  State.payrollData = { eventsByDate, adjustments, entries, calculations, weekAssignments };
+
+  const weekEnd = new Date(weekStart + 'T00:00:00');
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndStr = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth()+1).padStart(2,'0')}-${String(weekEnd.getDate()).padStart(2,'0')}`;
+
+  const grandTotal = calculations.reduce((s, c) => s + c.total, 0);
+
+  if (State.employees.length === 0) {
+    return `
+      <div class="section-header">
+        <div>
+          <div class="section-title">Nómina</div>
+          <div class="section-sub">No hay empleados registrados</div>
+        </div>
+      </div>
+      <div class="empty"><div class="empty-icon">○</div><div>Primero agrega empleados con su sueldo semanal.</div></div>`;
+  }
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Nómina</div>
+        <div class="section-sub">Semana del ${fmtDateShort(weekStart)} al ${fmtDateShort(weekEndStr)}</div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn" data-action="payroll-prev-week" title="Semana anterior">←</button>
+        <button class="btn" data-action="payroll-this-week">Esta semana</button>
+        <button class="btn" data-action="payroll-next-week" title="Semana siguiente">→</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-label">Total a pagar</div>
+        <div class="stat-value" style="color:var(--success)">${fmtMoney(grandTotal)}</div>
+        <div class="stat-sub">${calculations.length} empleados</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Faltas</div>
+        <div class="stat-value">${calculations.reduce((s,c) => s + c.days.filter(d => d.status === 'falta').length, 0)}</div>
+        <div class="stat-sub">en la semana</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Medios días</div>
+        <div class="stat-value">${calculations.reduce((s,c) => s + c.days.filter(d => d.status === 'medio').length, 0)}</div>
+        <div class="stat-sub">en la semana</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Días extra</div>
+        <div class="stat-value">${calculations.reduce((s,c) => s + c.extraDays.length, 0)}</div>
+        <div class="stat-sub">sáb/dom trabajados</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="btn btn-primary" data-action="export-payroll-csv">↓ Exportar CSV</button>
+      <button class="btn" data-action="print-payroll">🖨 Resumen general</button>
+      <button class="btn btn-success" data-action="print-all-receipts">📄 Descargar todos los recibos (PDF)</button>
+    </div>
+
+    <div class="payroll-employees">
+      ${calculations.map(c => renderPayrollEmployeeCard(c)).join('')}
+    </div>`;
+}
+
+function renderPayrollEmployeeCard(calc) {
+  const emp = calc.employee;
+  const expanded = State.expandedPayrollEmp === emp.id;
+
+  const dayDots = calc.days.map(d => {
+    let color = 'var(--success)', label = '✓';
+    if (d.status === 'falta') { color = 'var(--error)'; label = 'F'; }
+    else if (d.status === 'medio') { color = 'var(--warn)'; label = '½'; }
+    const lateMark = d.isLate ? '<span style="margin-left:2px;">⏰</span>' : '';
+    return `<div title="${fmtDateShort(d.date)} - ${d.status}${d.isLate ? ' (retardo)' : ''}" style="display:inline-flex; align-items:center; justify-content:center; min-width:28px; height:24px; background:${color}; color:white; border-radius:4px; font-size:11px; font-weight:600; font-family:'Geist Mono',monospace; padding: 0 4px;">${label}${lateMark}</div>`;
+  }).join('');
+
+  return `
+    <div class="payroll-card">
+      <div class="payroll-card-header" data-action="toggle-payroll-emp" data-id="${emp.id}">
+        <div class="emp-avatar" style="background-image:url('${emp.photo || ''}'); width:42px; height:42px;"></div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:600; font-size:15px;">${emp.name}</div>
+          <div style="font-size:12px; color:var(--text-muted);">
+            ${emp.weeklySalary ? `${fmtMoney(emp.weeklySalary)}/sem · ${fmtMoney(calc.dailyRate)}/día` : '⚠ Sueldo no definido — edítalo en Empleados'}
+          </div>
+        </div>
+        <div class="payroll-day-dots">${dayDots}</div>
+        <div style="text-align:right;">
+          <div style="font-family:'Instrument Serif',serif; font-size:24px; color:${calc.total >= 0 ? 'var(--success)' : 'var(--error)'};">${fmtMoney(calc.total)}</div>
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">total</div>
+        </div>
+        <div style="margin-left:12px; color:var(--text-muted); font-size:18px;">${expanded ? '▾' : '▸'}</div>
+      </div>
+      ${expanded ? renderPayrollEmployeeDetail(calc) : ''}
+    </div>`;
+}
+
+function renderPayrollEmployeeDetail(calc) {
+  const emp = calc.employee;
+  const projects = State.projects || [];
+  const weekAssignments = State.payrollData?.weekAssignments || {};
+
+  const projectOptions = (selected) => {
+    let opts = '<option value="">— Sin asignar —</option>';
+    projects.forEach(p => {
+      opts += `<option value="${p.id}" ${selected === p.id ? 'selected' : ''}>${p.name}</option>`;
+    });
+    return opts;
+  };
+
+  const dayRows = calc.days.map(d => {
+    const events = d.events;
+    const summary = events.length === 0
+      ? '<span style="color:var(--text-muted)">Sin registros</span>'
+      : events.map(e => `<span class="mono" style="font-size:11px; color:var(--text-dim); margin-right:8px;">${State.config.schedule[e.type]?.icon || ''}${fmtTime(e.timestamp)}</span>`).join('');
+
+    const statusBadge = {
+      completo: '<span class="badge badge-success">Día completo</span>',
+      medio: '<span class="badge badge-warn">Medio día</span>',
+      falta: '<span class="badge badge-error">Falta</span>',
+      vacaciones: '<span class="badge" style="background:#1e3a8a; color:#60a5fa;">🏖 Vacaciones</span>'
+    }[d.status];
+
+    const lateBadge = d.isLate ? `<span class="badge badge-warn" style="margin-left:6px;">+${d.lateMinutes}m tarde</span>` : '';
+    const adjMark = d.manuallyAdjusted ? '<span style="color:var(--accent); font-size:10px; margin-left:6px;">●ajuste</span>' : '';
+    const otBadge = d.overtimeMinutes > 0 ? `<span class="badge badge-success" style="margin-left:6px;">+${Math.round(d.overtimeMinutes/60*100)/100}h extra</span>` : '';
+
+    // Asignación de proyecto para este día
+    const dayAssign = (weekAssignments[d.date] || []).find(a => a.empId === emp.id) || {};
+    const showProjectAssign = d.status === 'completo' || d.status === 'medio';
+    const projectRow = showProjectAssign && projects.length > 0 ? `
+      <tr style="background:rgba(251,191,36,0.03);">
+        <td></td>
+        <td colspan="4">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; padding: 4px 0;">
+            <div>
+              <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">🌅 Mañana</label>
+              <select data-action="assign-project" data-emp="${emp.id}" data-date="${d.date}" data-slot="morning" style="width:100%; padding:5px 8px; font-size:12px; background:var(--bg-elev); color:var(--text); border:1px solid var(--border); border-radius:4px; margin-top:2px;">
+                ${projectOptions(dayAssign.morning)}
+              </select>
+            </div>
+            ${d.status === 'completo' ? `
+              <div>
+                <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">🌙 Tarde</label>
+                <select data-action="assign-project" data-emp="${emp.id}" data-date="${d.date}" data-slot="afternoon" style="width:100%; padding:5px 8px; font-size:12px; background:var(--bg-elev); color:var(--text); border:1px solid var(--border); border-radius:4px; margin-top:2px;">
+                  ${projectOptions(dayAssign.afternoon)}
+                </select>
+              </div>
+            ` : '<div></div>'}
+          </div>
+        </td>
+      </tr>
+    ` : '';
+
+    return `<tr>
+      <td style="font-family:'Geist Mono',monospace; font-size:12px;">${fmtDateShort(d.date)}</td>
+      <td>${summary}</td>
+      <td>${statusBadge}${lateBadge}${otBadge}${adjMark}</td>
+      <td style="text-align:right; font-family:'Geist Mono',monospace;">${fmtMoney(d.pay)}</td>
+      <td style="text-align:right;">
+        <select data-action="adjust-day" data-emp="${emp.id}" data-date="${d.date}" data-week="${calc.weekStart}" style="padding:4px 8px; font-size:12px; background:var(--bg-elev); color:var(--text); border:1px solid var(--border); border-radius:4px;" ${d.isVacation ? 'disabled' : ''}>
+          <option value="auto" ${!d.manuallyAdjusted ? 'selected' : ''}>Auto (${d.suggestedStatus})</option>
+          <option value="completo" ${d.manuallyAdjusted && d.status === 'completo' ? 'selected' : ''}>Completo</option>
+          <option value="medio" ${d.manuallyAdjusted && d.status === 'medio' ? 'selected' : ''}>Medio</option>
+          <option value="falta" ${d.manuallyAdjusted && d.status === 'falta' ? 'selected' : ''}>Falta</option>
+        </select>
+      </td>
+    </tr>${projectRow}`;
+  }).join('');
+
+  const extraDayRows = calc.extraDays.map(ed => {
+    const dow = dayOfWeek(ed.date);
+    const dayName = dow === 0 ? 'Domingo' : 'Sábado';
+    return `<tr style="background: rgba(52,211,153,0.05);">
+      <td style="font-family:'Geist Mono',monospace; font-size:12px;">${dayName} ${fmtDateShort(ed.date)}</td>
+      <td colspan="2"><span class="badge badge-success">Día extra</span> ${ed.events.map(e => `<span class="mono" style="font-size:11px; color:var(--text-dim); margin-right:8px;">${fmtTime(e.timestamp)}</span>`).join('')}</td>
+      <td style="text-align:right; font-family:'Geist Mono',monospace; color:var(--success);">+${fmtMoney(emp.extraDayRate || 0)}</td>
+      <td></td>
+    </tr>`;
+  }).join('');
+
+  const summaryRows = [];
+  summaryRows.push({ label: `Sueldo base (${calc.days.filter(d => d.status === 'completo').length} completos + ${calc.days.filter(d => d.status === 'medio').length} medios + ${calc.vacationDaysThisWeek} vacaciones)`, amount: calc.basePay, sign: '+' });
+  if (calc.overtimePay > 0) summaryRows.push({ label: `Horas extra (${calc.overtimeHours} h × ${fmtMoney(emp.hourlyOvertimeRate || 0)})`, amount: calc.overtimePay, sign: '+' });
+  if (calc.extraDayPay > 0) summaryRows.push({ label: `Días extra (${calc.extraDays.length} × ${fmtMoney(emp.extraDayRate || 0)})`, amount: calc.extraDayPay, sign: '+' });
+  if (calc.manualAdditions > 0) summaryRows.push({ label: 'Bonos / Otros pagos', amount: calc.manualAdditions, sign: '+' });
+  if (calc.retardoDiscount > 0) summaryRows.push({ label: `Retardos (${calc.totalRetardos} total, ${calc.retardosCobrables} cobrables × ${fmtMoney(State.config.payroll.retardoExtraCharge)})`, amount: calc.retardoDiscount, sign: '-' });
+  // Préstamos automáticos
+  calc.loanDeductions?.forEach(ld => {
+    summaryRows.push({ label: `Préstamo (${ld.loan.note || 'Préstamo'}) — abono semanal`, amount: ld.payment, sign: '-' });
+  });
+  if (calc.manualDeductions > 0) summaryRows.push({ label: 'Descuentos manuales', amount: calc.manualDeductions, sign: '-' });
+
+  const entriesHtml = calc.manualEntries.length === 0
+    ? '<div style="color:var(--text-muted); font-size:13px; padding:12px 0;">Aún no hay descuentos ni bonos esta semana.</div>'
+    : calc.manualEntries.map(e => {
+        const t = PAYROLL_ENTRY_TYPES[e.type];
+        return `<div style="display:flex; align-items:center; padding:10px 12px; background:var(--bg); border-radius:6px; margin-bottom:6px;">
+          <div style="font-size:18px; margin-right:10px;">${t?.icon || '?'}</div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:14px;">${t?.label || e.type} ${e.note ? `<span style="color:var(--text-muted); font-size:12px;">— ${e.note}</span>` : ''}</div>
+            <div style="font-size:11px; color:var(--text-muted);">${new Date(e.createdAt).toLocaleDateString('es-MX')}</div>
+          </div>
+          <div style="font-family:'Geist Mono',monospace; color:${t?.isDeduction ? 'var(--error)' : 'var(--success)'}; margin-right:12px;">${t?.isDeduction ? '-' : '+'}${fmtMoney(e.amount)}</div>
+          <button class="btn btn-ghost" data-action="del-payroll-entry" data-id="${e.id}" data-week="${calc.weekStart}" style="padding:4px 8px;">✕</button>
+        </div>`;
+      }).join('');
+
+  return `
+    <div class="payroll-card-detail">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h4 style="font-family:'Instrument Serif',serif; font-size:18px;">Días trabajados</h4>
+        <button class="btn btn-primary" data-action="print-receipt" data-emp="${emp.id}" data-week="${calc.weekStart}" style="font-size:12px; padding:6px 12px;">📄 Descargar recibo PDF</button>
+      </div>
+      ${projects.length === 0 ? '<div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">💡 Crea proyectos en la pestaña "Proyectos" para asignar trabajo a cada medio día.</div>' : ''}
+      <div class="reports-table" style="margin-bottom:20px;">
+        <table>
+          <thead>
+            <tr><th>Día</th><th>Eventos</th><th>Estado</th>
+            <th style="text-align:right;">Pago</th><th style="text-align:right;">Ajustar</th></tr>
+          </thead>
+          <tbody>${dayRows}${extraDayRows}</tbody>
+        </table>
+      </div>
+
+      <h4 style="font-family:'Instrument Serif',serif; font-size:18px; margin-bottom:10px;">Descuentos y bonos manuales</h4>
+      ${entriesHtml}
+      <button class="btn btn-primary" data-action="add-payroll-entry" data-emp="${emp.id}" data-week="${calc.weekStart}" style="margin-top:8px;">+ Agregar descuento o bono</button>
+
+      <h4 style="font-family:'Instrument Serif',serif; font-size:18px; margin-top:24px; margin-bottom:10px;">Resumen del cálculo</h4>
+      <div style="background:var(--bg); border-radius:8px; padding:16px;">
+        ${summaryRows.map(r => `
+          <div style="display:flex; justify-content:space-between; padding:6px 0; font-size:14px;">
+            <span style="color:var(--text-dim);">${r.sign === '-' ? '−' : '+'} ${r.label}</span>
+            <span style="font-family:'Geist Mono',monospace; color:${r.sign === '-' ? 'var(--error)' : 'var(--success)'};">${r.sign === '-' ? '-' : ''}${fmtMoney(r.amount)}</span>
+          </div>
+        `).join('')}
+        <div style="border-top:1px solid var(--border); margin-top:10px; padding-top:10px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="text-transform:uppercase; letter-spacing:0.08em; font-size:12px; color:var(--text-muted);">Total a pagar</span>
+          <span style="font-family:'Instrument Serif',serif; font-size:28px; color:var(--success);">${fmtMoney(calc.total)}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function showAddPayrollEntryModal(empId, weekStart) {
+  const emp = State.employees.find(e => e.id === empId);
+  const optionsHtml = Object.entries(PAYROLL_ENTRY_TYPES).map(([k, v]) =>
+    `<option value="${k}">${v.icon} ${v.label}</option>`
+  ).join('');
+
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-backdrop" id="modal-bd">
+      <div class="modal">
+        <h2>Agregar descuento o bono</h2>
+        <p class="modal-sub">Para <strong>${emp.name}</strong> — semana del ${fmtDateShort(weekStart)}</p>
+
+        <div class="field">
+          <label>Tipo</label>
+          <select id="entry-type">${optionsHtml}</select>
+        </div>
+        <div class="field">
+          <label>Monto (MXN)</label>
+          <input type="number" id="entry-amount" min="0" step="0.01" placeholder="500" autofocus>
+        </div>
+        <div class="field">
+          <label>Nota (opcional)</label>
+          <input type="text" id="entry-note" placeholder="Ej. Adelanto del lunes, abono préstamo 3/10...">
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" data-action="close-modal">Cancelar</button>
+          <button class="btn btn-primary" data-action="save-payroll-entry" data-emp="${empId}" data-week="${weekStart}">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-bd').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-bd') closeModal();
+  });
+}
+
+async function savePayrollEntry(empId, weekStart) {
+  const type = document.getElementById('entry-type').value;
+  const amount = parseFloat(document.getElementById('entry-amount').value);
+  const note = document.getElementById('entry-note').value.trim();
+  if (!amount || amount <= 0) { toast('Ingresa un monto válido', 'error'); return; }
+  try {
+    await API.addPayrollEntry(weekStart, { empId, type, amount, note });
+    toast('Guardado', 'success');
+    closeModal();
+    State.expandedPayrollEmp = empId;
+    render();
+  } catch (e) {
+    toast('Error: ' + e.message, 'error');
+  }
+}
+
+async function exportPayrollCsv() {
+  const calcs = State.payrollData?.calculations || [];
+  const rows = [['Empleado', 'Sueldo semanal', 'Dias completos', 'Medios dias', 'Faltas', 'Retardos', 'Horas extra', 'Dias extra', 'Sueldo base', 'Pago horas extra', 'Pago dias extra', 'Bonos', 'Descuento retardos', 'Descuentos manuales', 'TOTAL A PAGAR']];
+  calcs.forEach(c => {
+    const completos = c.days.filter(d => d.status === 'completo').length;
+    const medios = c.days.filter(d => d.status === 'medio').length;
+    const faltas = c.days.filter(d => d.status === 'falta').length;
+    rows.push([
+      c.employee.name, c.employee.weeklySalary || 0, completos, medios, faltas,
+      c.totalRetardos, c.overtimeHours, c.extraDays.length,
+      c.basePay.toFixed(2), c.overtimePay.toFixed(2), c.extraDayPay.toFixed(2),
+      c.manualAdditions.toFixed(2), c.retardoDiscount.toFixed(2), c.manualDeductions.toFixed(2),
+      c.total.toFixed(2)
+    ]);
+  });
+  const csv = rows.map(r => r.map(c => {
+    const s = String(c).replace(/"/g, '""');
+    return /[",\n]/.test(s) ? `"${s}"` : s;
+  }).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nomina-${State.payrollWeekStart}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV descargado', 'success');
+}
+
+function showLoanModal() {
+  const empOptions = State.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-backdrop" id="modal-bd">
+      <div class="modal">
+        <h2>Nuevo préstamo</h2>
+        <p class="modal-sub">El abono semanal se descontará automáticamente de la nómina</p>
+        <div class="field">
+          <label>Empleado</label>
+          <select id="loan-emp">${empOptions}</select>
+        </div>
+        <div class="field">
+          <label>Monto total del préstamo (MXN)</label>
+          <input type="number" id="loan-total" min="1" step="0.01" placeholder="3000" autofocus>
+        </div>
+        <div class="field">
+          <label>Abono semanal (MXN)</label>
+          <input type="number" id="loan-weekly" min="1" step="0.01" placeholder="200">
+        </div>
+        <div class="field">
+          <label>Descripción / Motivo (opcional)</label>
+          <input type="text" id="loan-note" placeholder="Ej. Préstamo para emergencia médica">
+        </div>
+        <div class="field">
+          <label>Iniciar descuentos a partir de la semana</label>
+          <input type="date" id="loan-start" value="${getWeekStart(todayStr())}">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" data-action="close-modal">Cancelar</button>
+          <button class="btn btn-primary" data-action="save-loan">Crear préstamo</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-bd').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-bd') closeModal();
+  });
+}
+
+async function saveLoan() {
+  const empId = document.getElementById('loan-emp').value;
+  const totalAmount = parseFloat(document.getElementById('loan-total').value);
+  const weeklyPayment = parseFloat(document.getElementById('loan-weekly').value);
+  const note = document.getElementById('loan-note').value.trim();
+  const startDate = document.getElementById('loan-start').value;
+  if (!empId || !totalAmount || totalAmount <= 0) { toast('Datos inválidos', 'error'); return; }
+  if (!weeklyPayment || weeklyPayment <= 0) { toast('Define el abono semanal', 'error'); return; }
+  try {
+    await API.addLoan({
+      empId, totalAmount, weeklyPayment, note,
+      startWeek: getWeekStart(startDate || todayStr())
+    });
+    toast('Préstamo creado', 'success');
+    closeModal();
+    State.loans = await API.getLoans();
+    render();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+function showVacationModal() {
+  const empOptions = State.employees.map(e => {
+    const b = vacationBalance(e, State.vacations);
+    return `<option value="${e.id}">${e.name} (${b.available} días disponibles)</option>`;
+  }).join('');
+  document.getElementById('modal-root').innerHTML = `
+    <div class="modal-backdrop" id="modal-bd">
+      <div class="modal">
+        <h2>Registrar vacaciones</h2>
+        <p class="modal-sub">Los días marcados se pagan completos y no cuentan como falta</p>
+        <div class="field">
+          <label>Empleado</label>
+          <select id="vac-emp">${empOptions}</select>
+        </div>
+        <div class="field">
+          <label>Desde</label>
+          <input type="date" id="vac-from" value="${todayStr()}">
+        </div>
+        <div class="field">
+          <label>Hasta</label>
+          <input type="date" id="vac-to" value="${todayStr()}">
+        </div>
+        <div class="field">
+          <label>Nota (opcional)</label>
+          <input type="text" id="vac-note" placeholder="Ej. Vacaciones de fin de año">
+        </div>
+        <div style="background:var(--bg); padding:10px; border-radius:6px; font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+          💡 Solo se cuentan los días laborales (lunes a viernes) entre las fechas seleccionadas.
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" data-action="close-modal">Cancelar</button>
+          <button class="btn btn-primary" data-action="save-vacation">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-bd').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-bd') closeModal();
+  });
+}
+
+async function saveVacation() {
+  const empId = document.getElementById('vac-emp').value;
+  const startDate = document.getElementById('vac-from').value;
+  const endDate = document.getElementById('vac-to').value;
+  const note = document.getElementById('vac-note').value.trim();
+  if (!empId || !startDate || !endDate) { toast('Faltan datos', 'error'); return; }
+  if (endDate < startDate) { toast('La fecha hasta debe ser posterior', 'error'); return; }
+  // Contar días laborales en el rango
+  let days = 0;
+  const d = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  while (d <= end) {
+    const dow = d.getDay();
+    if (dow >= 1 && dow <= 5) days++;
+    d.setDate(d.getDate() + 1);
+  }
+  if (days === 0) { toast('No hay días laborales en ese rango', 'error'); return; }
+  try {
+    await API.addVacation({ empId, startDate, endDate, days, note });
+    toast(`${days} días de vacaciones registrados`, 'success');
+    closeModal();
+    State.vacations = await API.getVacations();
+    render();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function exportProjectCsv() {
+  const assignments = await API.getDateRangeAssignments(State.projectReportFrom, State.projectReportTo);
+  const projectMap = {};
+  State.projects.forEach(p => { projectMap[p.id] = p.name; });
+
+  const rows = [['Fecha', 'Empleado', 'Slot', 'Proyecto', 'Costo']];
+  Object.keys(assignments).sort().forEach(date => {
+    assignments[date].forEach(item => {
+      const emp = State.employees.find(e => e.id === item.empId);
+      if (!emp) return;
+      const halfRate = (emp.weeklySalary || 0) / (State.config.payroll.daysPerWeek || 5) / 2;
+      ['morning', 'afternoon'].forEach(slot => {
+        const projId = item[slot];
+        if (projId) {
+          rows.push([date, emp.name, slot === 'morning' ? 'Mañana' : 'Tarde', projectMap[projId] || '?', halfRate.toFixed(2)]);
+        }
+      });
+    });
+  });
+
+  const csv = rows.map(r => r.map(c => {
+    const s = String(c).replace(/"/g, '""');
+    return /[",\n]/.test(s) ? `"${s}"` : s;
+  }).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `proyectos-${State.projectReportFrom}-a-${State.projectReportTo}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV descargado', 'success');
+}
+
+// Genera el HTML de UN recibo (media hoja). Se reusa para individual y batch.
+function buildReceiptHtml(calc) {
+  const emp = calc.employee;
+  const weekStart = calc.weekStart;
+  const weekEnd = new Date(weekStart + 'T00:00:00');
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+  const today = new Date();
+  const totalEnLetras = numberToWords(calc.total);
+
+  const detailRows = [];
+  detailRows.push(['Sueldo base', fmtMoney(calc.basePay), '+']);
+  if (calc.overtimePay > 0) detailRows.push([`Horas extra (${calc.overtimeHours} h)`, fmtMoney(calc.overtimePay), '+']);
+  if (calc.extraDayPay > 0) detailRows.push([`Días extra (${calc.extraDays.length})`, fmtMoney(calc.extraDayPay), '+']);
+  if (calc.manualAdditions > 0) detailRows.push(['Bonos / Otros pagos', fmtMoney(calc.manualAdditions), '+']);
+  if (calc.retardoDiscount > 0) detailRows.push([`Retardos (${calc.retardosCobrables})`, fmtMoney(calc.retardoDiscount), '-']);
+  calc.loanDeductions?.forEach(ld => {
+    detailRows.push([`Abono préstamo${ld.loan.note ? ' (' + ld.loan.note + ')' : ''}`, fmtMoney(ld.payment), '-']);
+  });
+  calc.manualEntries.forEach(e => {
+    const t = PAYROLL_ENTRY_TYPES[e.type];
+    detailRows.push([`${t?.label || e.type}${e.note ? ' - ' + e.note : ''}`, fmtMoney(e.amount), t?.isDeduction ? '-' : '+']);
+  });
+
+  return `
+    <div class="receipt">
+      <div class="r-header">
+        <div>
+          <div class="r-title">RECIBO DE NÓMINA</div>
+          <div class="r-sub">Semana del ${fmtDateShort(weekStart)} al ${fmtDateShort(weekEndStr)}</div>
+        </div>
+        <div class="r-meta">
+          <div><strong>Folio:</strong> ${weekStart}-${emp.id.slice(0,5).toUpperCase()}</div>
+          <div><strong>Fecha:</strong> ${today.toLocaleDateString('es-MX', { day:'numeric', month:'short', year:'numeric' })}</div>
+        </div>
+      </div>
+
+      <div class="r-emp">
+        <div><span class="lbl">Empleado:</span> <strong>${emp.name}</strong></div>
+        <div><span class="lbl">Días trabajados:</span> ${calc.days.filter(d => d.status === 'completo').length}c · ${calc.days.filter(d => d.status === 'medio').length}m · ${calc.days.filter(d => d.status === 'falta').length}f${calc.vacationDaysThisWeek > 0 ? ' · ' + calc.vacationDaysThisWeek + 'v' : ''}</div>
+      </div>
+
+      <div class="r-legend">
+        ${RECEIPT_LEGEND}
+      </div>
+
+      <table class="r-detail">
+        <tbody>
+          ${detailRows.map(r => `<tr>
+            <td>${r[2] === '-' ? '−' : '+'} ${r[0]}</td>
+            <td class="num">${r[2] === '-' ? '-' : ''}${r[1]}</td>
+          </tr>`).join('')}
+          <tr class="r-total"><td>TOTAL NETO</td><td class="num">${fmtMoney(calc.total)}</td></tr>
+        </tbody>
+      </table>
+
+      <div class="r-words">
+        <strong>Cantidad con letra:</strong> ${totalEnLetras.charAt(0).toUpperCase() + totalEnLetras.slice(1)}
+      </div>
+
+      <div class="r-signatures">
+        <div class="r-sig"><div class="r-sig-line"></div><div class="r-sig-label">${emp.name}<br><span>Empleado que recibe</span></div></div>
+        <div class="r-sig"><div class="r-sig-line"></div><div class="r-sig-label">Arq. Luis Joaquín Gutiérrez Berumen<br><span>Patrón / Quien entrega</span></div></div>
+      </div>
+    </div>`;
+}
+
+// CSS para recibos en PDF (1 por hoja, tamaño carta)
+function receiptStyles() {
+  return `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', Georgia, serif; color: #000; font-size: 11pt; background: white; }
+
+    .receipt {
+      width: 21.6cm;
+      min-height: 27.5cm;
+      padding: 1.8cm 2cm;
+      display: flex;
+      flex-direction: column;
+      background: white;
+    }
+
+    .r-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 18px;
+    }
+    .r-title { font-size: 18pt; font-weight: bold; letter-spacing: 0.05em; }
+    .r-sub { font-size: 11pt; color: #555; margin-top: 3px; }
+    .r-meta { font-size: 10pt; color: #555; text-align: right; line-height: 1.5; }
+
+    .r-emp {
+      display: flex; justify-content: space-between;
+      font-size: 11pt; margin-bottom: 16px;
+      background: #f8f5f0; border-radius: 4px; padding: 12px 14px;
+    }
+    .r-emp .lbl { color: #555; }
+
+    .r-legend {
+      background: #f8f5f0; border: 1px solid #ddd;
+      padding: 14px 18px; border-radius: 4px;
+      margin-bottom: 18px; font-size: 10.5pt;
+      text-align: justify; line-height: 1.6;
+    }
+
+    .r-detail {
+      width: 100%; border-collapse: collapse;
+      margin-bottom: 16px; font-size: 11pt;
+    }
+    .r-detail td { padding: 7px 8px; border-bottom: 1px dotted #ccc; }
+    .r-detail td.num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
+    .r-detail tr.r-total td {
+      font-weight: bold; font-size: 13pt; padding: 12px 8px;
+      border-top: 2px solid #000; border-bottom: 2px solid #000;
+      background: #f8f5f0;
+    }
+
+    .r-words {
+      background: #f8f5f0; padding: 10px 14px;
+      border-left: 3px solid #000;
+      margin-bottom: 18px; font-size: 11pt; font-style: italic;
+    }
+
+    .r-signatures {
+      display: flex; justify-content: space-around;
+      margin-top: auto; padding-top: 80px; gap: 40px;
+    }
+    .r-sig { flex: 1; max-width: 320px; text-align: center; }
+    .r-sig-line { border-top: 1px solid #000; margin-bottom: 5px; }
+    .r-sig-label { font-size: 10pt; line-height: 1.4; }
+    .r-sig-label span { color: #555; font-weight: 400; font-size: 9pt; display: block; margin-top: 2px; }
+  `;
+}
+
+async function generateReceiptsPDF(calcs, filename) {
+  if (!window.jspdf) {
+    toast('La librería PDF no está cargada. Recarga la página.', 'error');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+
+  const container = document.createElement('div');
+  container.style.position = 'absolute';
+  container.style.left = '-99999px';
+  container.style.top = '0';
+  container.style.background = 'white';
+  container.innerHTML = `<style>${receiptStyles()}</style>` +
+    calcs.map(c => buildReceiptHtml(c)).join('');
+  document.body.appendChild(container);
+
+  toast('Generando PDF, espera unos segundos…', 'info', 3000);
+
+  try {
+    const pdf = new jsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+    const receipts = container.querySelectorAll('.receipt');
+    const pageW = 215.9;
+    const pageH = 279.4;
+
+    for (let i = 0; i < receipts.length; i++) {
+      const canvas = await html2canvas(receipts[i], {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageW, pageH);
+    }
+
+    pdf.save(filename);
+
+    // Después de descargar el PDF, preguntar si se confirman los pagos de préstamos
+    const allLoanPayments = [];
+    calcs.forEach(c => {
+      (c.loanDeductions || []).forEach(ld => {
+        allLoanPayments.push({ calc: c, ld });
+      });
+    });
+
+    if (allLoanPayments.length > 0) {
+      const confirmMsg = `Se descargó el PDF.\n\n¿Quieres registrar automáticamente los abonos de préstamo de esta semana?\n\n${allLoanPayments.length} pago(s) por un total de ${fmtMoney(allLoanPayments.reduce((s, p) => s + p.ld.payment, 0))}.\n\nEsto actualizará el saldo de cada préstamo y quedará en el historial.`;
+      if (confirm(confirmMsg)) {
+        for (const { calc, ld } of allLoanPayments) {
+          try {
+            const newPaid = (ld.loan.paidAmount || 0) + ld.payment;
+            const isFullyPaid = newPaid >= ld.loan.totalAmount;
+            await API.updateLoan(ld.loan.id, {
+              paidAmount: newPaid,
+              status: isFullyPaid ? 'paid' : 'active'
+            });
+            await API.addLoanPayment(ld.loan.id, {
+              amount: ld.payment,
+              type: 'auto',
+              note: `Abono semana ${calc.weekStart} - ${calc.employee.name}`,
+              weekStart: calc.weekStart
+            });
+          } catch (e) {
+            console.error('Error registrando pago:', e);
+          }
+        }
+        toast(`${allLoanPayments.length} pago(s) de préstamo registrado(s)`, 'success', 4000);
+        State.loans = await API.getLoans();
+      }
+    } else {
+      toast('PDF descargado', 'success');
+    }
+  } catch (e) {
+    console.error(e);
+    toast('Error al generar PDF: ' + e.message, 'error');
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+function printIndividualReceipt(empId, weekStart) {
+  const calc = State.payrollData?.calculations.find(c => c.employee.id === empId);
+  if (!calc) { toast('No hay datos para este empleado', 'error'); return; }
+  const safeName = calc.employee.name.replace(/[^a-zA-Z0-9]/g, '_');
+  generateReceiptsPDF([calc], `recibo-${safeName}-${weekStart}.pdf`);
+}
+
+function printAllReceipts() {
+  const calcs = State.payrollData?.calculations || [];
+  if (calcs.length === 0) { toast('No hay empleados', 'error'); return; }
+  const validCalcs = calcs.filter(c => c.employee.weeklySalary > 0);
+  if (validCalcs.length === 0) { toast('Define sueldos primero', 'error'); return; }
+  generateReceiptsPDF(validCalcs, `recibos-${State.payrollWeekStart}.pdf`);
+}
+
+function printPayroll() {
+  // Resumen general de la nómina (vista panorámica, NO recibos individuales)
+  const calcs = State.payrollData?.calculations || [];
+  const weekStart = State.payrollWeekStart;
+  const weekEnd = new Date(weekStart + 'T00:00:00');
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  const total = calcs.reduce((s, c) => s + c.total, 0);
+
+  const html = `<!DOCTYPE html><html><head><title>Resumen nomina ${weekStart}</title>
+    <style>
+      @page { size: letter; margin: 1.5cm; }
+      body { font-family: -apple-system, system-ui, sans-serif; padding: 20px; max-width: 760px; margin: 0 auto; color: #1c1917; }
+      h1 { font-size: 22px; margin-bottom: 4px; }
+      .sub { color: #78716c; margin-bottom: 20px; font-size: 13px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e7e5e4; }
+      th { background: #f5f3ee; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+      td.num, th.num { text-align: right; font-family: 'Courier New', monospace; }
+      .total-row { font-weight: bold; background: #fef3c7; }
+      .total-row td { border-top: 2px solid #1c1917; padding: 11px 10px; font-size: 14px; }
+      @media print { .no-print { display: none; } body { padding: 10px; } }
+    </style></head><body>
+    <button class="no-print" onclick="window.print()" style="margin-bottom:16px; padding:8px 16px; cursor:pointer;">Imprimir / Guardar PDF</button>
+    <h1>Resumen de nómina semanal</h1>
+    <div class="sub">Semana del ${fmtDateShort(weekStart)} al ${fmtDateShort(weekEnd.toISOString().slice(0,10))} · Generado ${new Date().toLocaleString('es-MX')}</div>
+    <table>
+      <thead><tr>
+        <th>Empleado</th><th class="num">Base</th><th class="num">H. extra</th>
+        <th class="num">Días extra</th><th class="num">Bonos</th><th class="num">Descuentos</th><th class="num">Total</th>
+      </tr></thead>
+      <tbody>
+        ${calcs.map(c => `<tr>
+          <td>${c.employee.name}</td>
+          <td class="num">${fmtMoney(c.basePay)}</td>
+          <td class="num">${fmtMoney(c.overtimePay)}</td>
+          <td class="num">${fmtMoney(c.extraDayPay)}</td>
+          <td class="num">${fmtMoney(c.manualAdditions)}</td>
+          <td class="num">-${fmtMoney(c.retardoDiscount + c.manualDeductions + (c.totalLoanDeduction || 0))}</td>
+          <td class="num"><strong>${fmtMoney(c.total)}</strong></td>
+        </tr>`).join('')}
+        <tr class="total-row"><td colspan="6">TOTAL</td><td class="num">${fmtMoney(total)}</td></tr>
+      </tbody>
+    </table>
+    </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+/* ============================================================
+   VIEW: PROYECTOS
+   ============================================================ */
+async function renderAdminProjects() {
+  if (State.projects.length === 0) {
+    State.projects = await API.getProjects();
+  }
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Proyectos</div>
+        <div class="section-sub">${State.projects.length} proyecto${State.projects.length !== 1 ? 's' : ''} · Asígnalos en la pestaña Nómina</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" data-action="goto-project-report">📊 Ver gasto por proyecto</button>
+        <button class="btn btn-primary" data-action="add-project">+ Nuevo proyecto</button>
+      </div>
+    </div>
+
+    ${State.projects.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">🏗</div>
+        <div>Aún no tienes proyectos.</div>
+        <div style="margin-top:8px; font-size:13px;">Agrega el primero para empezar a llevar control.</div>
+      </div>
+    ` : `
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+        ${State.projects.map(p => `
+          <div class="card" style="display:flex; align-items:center; gap:12px;">
+            <div style="font-size:24px;">🏗</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600;">${p.name}</div>
+              <div style="font-size:12px; color:var(--text-muted);">Creado ${new Date(p.createdAt).toLocaleDateString('es-MX')}</div>
+            </div>
+            <button class="btn btn-ghost" data-action="rename-project" data-id="${p.id}" title="Renombrar" style="padding:4px 8px;">✎</button>
+            <button class="btn btn-ghost" data-action="delete-project" data-id="${p.id}" title="Eliminar" style="padding:4px 8px; color:var(--error);">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    `}`;
+}
+
+async function renderAdminProjectReport() {
+  if (!State.projectReportFrom) {
+    const d = new Date(); d.setDate(d.getDate() - 30);
+    State.projectReportFrom = d.toISOString().slice(0, 10);
+  }
+  if (!State.projectReportTo) State.projectReportTo = todayStr();
+
+  // Cargar datos
+  const assignments = await API.getDateRangeAssignments(State.projectReportFrom, State.projectReportTo);
+  // Para calcular costos, necesitamos: los días trabajados de cada empleado en el rango
+  // Y el costo por medio día (dailyRate / 2)
+  const projectStats = {};
+  State.projects.forEach(p => {
+    projectStats[p.id] = { project: p, halfDays: 0, totalCost: 0, employees: new Set() };
+  });
+
+  // Recorrer cada fecha y cada asignación
+  Object.keys(assignments).forEach(date => {
+    assignments[date].forEach(item => {
+      const emp = State.employees.find(e => e.id === item.empId);
+      if (!emp) return;
+      const halfRate = (emp.weeklySalary || 0) / (State.config.payroll.daysPerWeek || 5) / 2;
+
+      ['morning', 'afternoon'].forEach(slot => {
+        const projId = item[slot];
+        if (projId && projectStats[projId]) {
+          projectStats[projId].halfDays++;
+          projectStats[projId].totalCost += halfRate;
+          projectStats[projId].employees.add(emp.name);
+        }
+      });
+    });
+  });
+
+  const sortedStats = Object.values(projectStats).sort((a, b) => b.totalCost - a.totalCost);
+  const totalSpent = sortedStats.reduce((s, p) => s + p.totalCost, 0);
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Gasto por proyecto</div>
+        <div class="section-sub">Costo de nómina distribuido entre proyectos</div>
+      </div>
+      <button class="btn btn-ghost" data-action="back-projects">← Volver a Proyectos</button>
+    </div>
+
+    <div class="reports-filters">
+      <div class="field"><label>Desde</label><input type="date" id="proj-from" value="${State.projectReportFrom}"></div>
+      <div class="field"><label>Hasta</label><input type="date" id="proj-to" value="${State.projectReportTo}"></div>
+      <button class="btn btn-primary" data-action="apply-proj-filters">Aplicar</button>
+      <button class="btn" data-action="export-proj-csv">↓ Exportar CSV</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-label">Total gastado</div>
+        <div class="stat-value" style="color:var(--success)">${fmtMoney(totalSpent)}</div>
+        <div class="stat-sub">en proyectos asignados</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Proyectos activos</div>
+        <div class="stat-value">${sortedStats.filter(s => s.halfDays > 0).length}</div>
+        <div class="stat-sub">de ${sortedStats.length}</div>
+      </div>
+    </div>
+
+    <div class="reports-table">
+      <table>
+        <thead><tr><th>Proyecto</th><th>Medios días</th><th>Empleados</th><th style="text-align:right;">Costo</th><th style="text-align:right;">% del total</th></tr></thead>
+        <tbody>
+          ${sortedStats.length === 0 ? '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">No hay asignaciones en este rango</td></tr>' :
+            sortedStats.map(s => {
+              const pct = totalSpent > 0 ? Math.round((s.totalCost / totalSpent) * 100) : 0;
+              return `<tr>
+                <td><strong>${s.project.name}</strong></td>
+                <td class="mono">${s.halfDays} (${(s.halfDays/2).toFixed(1)} días)</td>
+                <td style="font-size:12px; color:var(--text-dim);">${[...s.employees].join(', ')}</td>
+                <td style="text-align:right; font-family:'Geist Mono',monospace;">${fmtMoney(s.totalCost)}</td>
+                <td style="text-align:right;"><div style="display:inline-flex; align-items:center; gap:8px;"><div style="width:60px; height:6px; background:var(--bg-card); border-radius:3px;"><div style="width:${pct}%; height:100%; background:var(--accent); border-radius:3px;"></div></div><span class="mono" style="font-size:12px;">${pct}%</span></div></td>
+              </tr>`;
+            }).join('')
+          }
+        </tbody>
+      </table>
+    </div>`;
+}
+
+/* ============================================================
+   VIEW: PRÉSTAMOS
+   ============================================================ */
+async function renderAdminLoans() {
+  State.loans = await API.getLoans();
+  const loans = State.loans;
+
+  // Cargar historiales de pagos para todos los préstamos
+  const paymentsByLoan = {};
+  await Promise.all(loans.map(async (l) => {
+    paymentsByLoan[l.id] = await API.getLoanPayments(l.id);
+  }));
+
+  // Agrupar por empleado
+  const byEmp = {};
+  loans.forEach(l => { (byEmp[l.empId] ||= []).push(l); });
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Préstamos</div>
+        <div class="section-sub">${loans.filter(l => l.status === 'active').length} activos · ${loans.filter(l => l.status === 'paid').length} pagados</div>
+      </div>
+      <button class="btn btn-primary" data-action="add-loan">+ Nuevo préstamo</button>
+    </div>
+
+    ${loans.length === 0 ? `
+      <div class="empty">
+        <div class="empty-icon">🏦</div>
+        <div>Aún no hay préstamos registrados.</div>
+        <div style="margin-top:8px; font-size:13px;">El sistema descontará automáticamente el abono semanal de la nómina.</div>
+      </div>
+    ` : Object.keys(byEmp).map(empId => {
+      const emp = State.employees.find(e => e.id === empId);
+      if (!emp) return '';
+      const empLoansList = byEmp[empId];
+      return `<div style="margin-bottom:24px;">
+        <h3 style="font-family:'Instrument Serif',serif; font-size:20px; margin-bottom:10px;">${emp.name}</h3>
+        ${empLoansList.map(l => {
+          const remaining = l.totalAmount - (l.paidAmount || 0);
+          const pct = Math.round(((l.paidAmount || 0) / l.totalAmount) * 100);
+          const weeksRemaining = l.weeklyPayment > 0 ? Math.ceil(remaining / l.weeklyPayment) : 0;
+          const isPaid = remaining <= 0 || l.status === 'paid';
+          const payments = (paymentsByLoan[l.id] || []).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+          const isExpanded = State.expandedLoanId === l.id;
+
+          return `<div class="card" style="margin-bottom:10px; border-color: ${isPaid ? 'var(--success-dim)' : 'var(--border-soft)'};">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+              <div>
+                <div style="font-family:'Instrument Serif',serif; font-size:24px;">${fmtMoney(l.totalAmount)}</div>
+                <div style="font-size:12px; color:var(--text-muted);">${l.note || 'Préstamo'} · creado ${new Date(l.createdAt).toLocaleDateString('es-MX')}</div>
+              </div>
+              <div style="text-align:right;">
+                ${isPaid
+                  ? '<span class="badge badge-success">PAGADO</span>'
+                  : `<div style="font-family:'Geist Mono',monospace; color:var(--error); font-size:18px;">${fmtMoney(remaining)}</div><div style="font-size:11px; color:var(--text-muted);">pendiente</div>`
+                }
+              </div>
+            </div>
+            <div style="height:8px; background:var(--bg-card); border-radius:4px; margin-bottom:10px;">
+              <div style="height:100%; width:${pct}%; background:${isPaid ? 'var(--success)' : 'var(--accent)'}; border-radius:4px;"></div>
+            </div>
+            <div style="display:flex; gap:16px; font-size:13px; color:var(--text-dim); flex-wrap:wrap; margin-bottom: 8px;">
+              <div><strong style="color:var(--text);">${pct}%</strong> pagado · ${fmtMoney(l.paidAmount || 0)}</div>
+              <div>Abono: <strong style="color:var(--text);">${fmtMoney(l.weeklyPayment)}/sem</strong></div>
+              ${!isPaid ? `<div>Le restan <strong style="color:var(--text);">${weeksRemaining} semanas</strong></div>` : ''}
+              <div>${payments.length} pago${payments.length !== 1 ? 's' : ''} registrado${payments.length !== 1 ? 's' : ''}</div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:12px; flex-wrap: wrap;">
+              ${!isPaid ? `<button class="btn btn-success" data-action="loan-payment" data-id="${l.id}" style="font-size:12px; padding:6px 12px;">+ Registrar pago</button>` : ''}
+              <button class="btn" data-action="toggle-loan-history" data-id="${l.id}" style="font-size:12px; padding:6px 12px;">${isExpanded ? '▾' : '▸'} Historial de pagos (${payments.length})</button>
+              ${!isPaid ? `<button class="btn btn-ghost" data-action="mark-loan-paid" data-id="${l.id}" style="font-size:12px; padding:6px 12px; color:var(--success);">Marcar como pagado</button>` : ''}
+              <button class="btn btn-ghost" data-action="delete-loan" data-id="${l.id}" style="font-size:12px; padding:6px 12px; color:var(--error);">Eliminar</button>
+            </div>
+
+            ${isExpanded ? `
+              <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border-soft);">
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Historial de pagos</div>
+                ${payments.length === 0
+                  ? '<div style="color:var(--text-muted); font-size:13px; padding:8px 0;">Aún no hay pagos registrados.</div>'
+                  : `<div class="reports-table" style="background:var(--bg);">
+                    <table>
+                      <thead><tr><th>Fecha</th><th>Tipo</th><th>Nota</th><th style="text-align:right;">Monto</th><th></th></tr></thead>
+                      <tbody>
+                        ${payments.map(p => `<tr>
+                          <td class="mono" style="font-size:12px;">${new Date(p.createdAt).toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' })}</td>
+                          <td><span class="badge ${p.type === 'auto' ? 'badge-success' : 'badge-muted'}">${p.type === 'auto' ? 'Automático' : 'Manual'}</span></td>
+                          <td style="font-size:12px; color:var(--text-dim);">${p.note || ''}</td>
+                          <td style="text-align:right; font-family:'Geist Mono',monospace; color:var(--success);">${fmtMoney(p.amount)}</td>
+                          <td><button class="btn btn-ghost" data-action="del-loan-payment" data-loan="${l.id}" data-pay="${p.id}" data-amount="${p.amount}" style="font-size:11px; padding:4px 8px; color:var(--error);">✕</button></td>
+                        </tr>`).join('')}
+                      </tbody>
+                    </table>
+                  </div>`
+                }
+              </div>
+            ` : ''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}`;
+}
+
+/* ============================================================
+   VIEW: VACACIONES
+   ============================================================ */
+async function renderAdminVacations() {
+  State.vacations = await API.getVacations();
+  const emps = State.employees;
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Vacaciones</div>
+        <div class="section-sub">Control de días por antigüedad (Ley Federal del Trabajo)</div>
+      </div>
+      <button class="btn btn-primary" data-action="add-vacation">+ Registrar vacaciones</button>
+    </div>
+
+    <div style="background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px; font-size:13px; color:var(--text-dim);">
+      💡 <strong style="color:var(--text);">Reglas LFT:</strong> año 1 = 12 días · año 2 = 14 · año 3 = 16 · año 4 = 18 · año 5 = 20 · 6-10 = 22 · 11-15 = 24 · 16-20 = 26
+    </div>
+
+    ${emps.length === 0 ? '<div class="empty"><div class="empty-icon">🏖</div><div>No hay empleados registrados.</div></div>' : `
+      <div class="reports-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Empleado</th><th>Antigüedad</th><th>Días/año</th>
+              <th class="num">Acumulados</th><th class="num">Tomados</th><th class="num">Disponibles</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${emps.map(emp => {
+              const b = vacationBalance(emp, State.vacations);
+              const empVacs = State.vacations.filter(v => v.empId === emp.id);
+              return `<tr>
+                <td><strong>${emp.name}</strong>${!emp.startDate ? '<br><span style="color:var(--warn); font-size:11px;">⚠ Sin fecha de ingreso</span>' : ''}</td>
+                <td>${b.years} año${b.years !== 1 ? 's' : ''}</td>
+                <td>${b.yearlyDays}</td>
+                <td style="text-align:right; font-family:'Geist Mono',monospace;">${b.totalAccrued}</td>
+                <td style="text-align:right; font-family:'Geist Mono',monospace;">${b.taken}</td>
+                <td style="text-align:right; font-family:'Geist Mono',monospace; color:${b.available > 0 ? 'var(--success)' : 'var(--text-muted)'};"><strong>${b.available}</strong></td>
+                <td style="text-align:right;">
+                  <button class="btn btn-ghost" data-action="view-vacations" data-emp="${emp.id}" style="font-size:12px; padding:4px 10px;">Ver historial (${empVacs.length})</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `}
+
+    ${State.vacations.length > 0 ? `
+      <h3 style="font-family:'Instrument Serif',serif; font-size:22px; margin-top:30px; margin-bottom:14px;">Historial reciente</h3>
+      <div class="reports-table">
+        <table>
+          <thead><tr><th>Empleado</th><th>Desde</th><th>Hasta</th><th>Días</th><th>Nota</th><th></th></tr></thead>
+          <tbody>
+            ${State.vacations.sort((a,b) => b.startDate.localeCompare(a.startDate)).slice(0, 20).map(v => {
+              const emp = State.employees.find(e => e.id === v.empId);
+              return `<tr>
+                <td>${emp?.name || '?'}</td>
+                <td class="mono">${fmtDateShort(v.startDate)}</td>
+                <td class="mono">${fmtDateShort(v.endDate)}</td>
+                <td><strong>${v.days}</strong></td>
+                <td style="font-size:12px; color:var(--text-dim);">${v.note || ''}</td>
+                <td><button class="btn btn-ghost" data-action="delete-vacation" data-id="${v.id}" style="padding:4px 8px; color:var(--error);">✕</button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : ''}`;
+}
+
+/* -- Reportes -- */
+async function renderAdminReports() {
+  const emps = State.employees;
+  const today = todayStr();
+  if (!State.reportFrom) {
+    // Por defecto: últimos 7 días
+    const d = new Date(); d.setDate(d.getDate() - 7);
+    State.reportFrom = d.toISOString().slice(0, 10);
+  }
+  if (!State.reportTo) State.reportTo = today;
+  const filterEmp = State.reportEmployee || '';
+
+  if (!State.reportData ||
+      State.reportDataKey !== `${State.reportFrom}|${State.reportTo}`) {
+    State.reportData = await API.getDateRangeEvents(State.reportFrom, State.reportTo);
+    State.reportDataKey = `${State.reportFrom}|${State.reportTo}`;
+  }
+
+  const config = State.config;
+  const rows = [];
+  Object.keys(State.reportData).sort().reverse().forEach(date => {
+    const events = State.reportData[date];
+    // Agrupar por empleado
+    const byEmp = {};
+    events.forEach(e => { (byEmp[e.empId] ||= []).push(e); });
+    Object.keys(byEmp).forEach(empId => {
+      if (filterEmp && empId !== filterEmp) return;
+      const emp = emps.find(e => e.id === empId);
+      if (!emp) return;
+      const evs = byEmp[empId].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+      const evMap = {};
+      evs.forEach(e => evMap[e.type] = e);
+
+      let workedMinutes = null;
+      if (evMap.entrada && evMap.salida) {
+        const total = (new Date(evMap.salida.timestamp) - new Date(evMap.entrada.timestamp)) / 60000;
+        let breaks = 0;
+        if (evMap.desayuno_inicio && evMap.desayuno_fin)
+          breaks += (new Date(evMap.desayuno_fin.timestamp) - new Date(evMap.desayuno_inicio.timestamp)) / 60000;
+        if (evMap.comida_inicio && evMap.comida_fin)
+          breaks += (new Date(evMap.comida_fin.timestamp) - new Date(evMap.comida_inicio.timestamp)) / 60000;
+        workedMinutes = Math.round(total - breaks);
+      }
+
+      let entradaStatus = '<span class="badge badge-muted">—</span>';
+      if (evMap.entrada) {
+        const st = eventStatus('entrada', evMap.entrada.timestamp, config.schedule);
+        entradaStatus = st.kind === 'late'
+          ? `<span class="badge badge-warn">+${st.minutes}m</span>`
+          : `<span class="badge badge-success">a tiempo</span>`;
+      }
+
+      const cell = e => e ? fmtTime(e.timestamp) : '—';
+      const wkDisplay = workedMinutes !== null ? `${Math.floor(workedMinutes/60)}h ${workedMinutes%60}m` : '—';
+
+      rows.push(`<tr>
+        <td class="mono">${date}</td>
+        <td>${emp.name}</td>
+        <td class="mono">${cell(evMap.entrada)}</td>
+        <td>${entradaStatus}</td>
+        <td class="mono">${cell(evMap.desayuno_inicio)} → ${cell(evMap.desayuno_fin)}</td>
+        <td class="mono">${cell(evMap.comida_inicio)} → ${cell(evMap.comida_fin)}</td>
+        <td class="mono">${cell(evMap.salida)}</td>
+        <td class="mono">${wkDisplay}</td>
+      </tr>`);
+    });
+  });
+
+  const empOptions = '<option value="">Todos los empleados</option>' +
+    emps.map(e => `<option value="${e.id}" ${filterEmp === e.id ? 'selected' : ''}>${e.name}</option>`).join('');
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Reportes</div>
+        <div class="section-sub">${rows.length} registro(s) en el rango seleccionado</div>
+      </div>
+      <button class="btn" data-action="export-csv">↓ Exportar CSV</button>
+    </div>
+
+    <div class="reports-filters">
+      <div class="field"><label>Desde</label><input type="date" id="filter-from" value="${State.reportFrom}"></div>
+      <div class="field"><label>Hasta</label><input type="date" id="filter-to" value="${State.reportTo}"></div>
+      <div class="field"><label>Empleado</label><select id="filter-emp">${empOptions}</select></div>
+      <button class="btn btn-primary" data-action="apply-filters">Aplicar</button>
+    </div>
+
+    <div class="reports-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Empleado</th><th>Entrada</th><th>Estado</th>
+            <th>Desayuno</th><th>Comida</th><th>Salida</th><th>Trabajado</th>
+          </tr>
+        </thead>
+        <tbody>${rows.length ? rows.join('') : `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:40px;">No hay registros en este rango</td></tr>`}</tbody>
+      </table>
+    </div>`;
+}
+
+async function exportCsv() {
+  const config = State.config;
+  const data = State.reportData || {};
+  const filterEmp = State.reportEmployee || '';
+  const rows = [['Fecha','Empleado','Entrada','Estado entrada','Sale desayuno','Regresa desayuno','Sale comida','Regresa comida','Salida','Minutos trabajados']];
+
+  Object.keys(data).sort().forEach(date => {
+    const events = data[date];
+    const byEmp = {};
+    events.forEach(e => { (byEmp[e.empId] ||= []).push(e); });
+    Object.keys(byEmp).forEach(empId => {
+      if (filterEmp && empId !== filterEmp) return;
+      const emp = State.employees.find(e => e.id === empId);
+      if (!emp) return;
+      const evMap = {};
+      byEmp[empId].forEach(e => evMap[e.type] = e);
+      const cell = e => e ? fmtTimeWithSec(e.timestamp) : '';
+      let wm = '';
+      if (evMap.entrada && evMap.salida) {
+        const total = (new Date(evMap.salida.timestamp) - new Date(evMap.entrada.timestamp)) / 60000;
+        let breaks = 0;
+        if (evMap.desayuno_inicio && evMap.desayuno_fin)
+          breaks += (new Date(evMap.desayuno_fin.timestamp) - new Date(evMap.desayuno_inicio.timestamp)) / 60000;
+        if (evMap.comida_inicio && evMap.comida_fin)
+          breaks += (new Date(evMap.comida_fin.timestamp) - new Date(evMap.comida_inicio.timestamp)) / 60000;
+        wm = Math.round(total - breaks);
+      }
+      let st = '';
+      if (evMap.entrada) {
+        const s = eventStatus('entrada', evMap.entrada.timestamp, config.schedule);
+        st = s.kind === 'late' ? `Retardo ${s.minutes} min` : 'A tiempo';
+      }
+      rows.push([date, emp.name, cell(evMap.entrada), st,
+        cell(evMap.desayuno_inicio), cell(evMap.desayuno_fin),
+        cell(evMap.comida_inicio), cell(evMap.comida_fin),
+        cell(evMap.salida), wm]);
+    });
+  });
+
+  const csv = rows.map(r => r.map(c => {
+    const s = String(c).replace(/"/g, '""');
+    return /[",\n]/.test(s) ? `"${s}"` : s;
+  }).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `asistencia-${State.reportFrom}-a-${State.reportTo}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV descargado', 'success');
+}
+
+/* -- Configuración -- */
+function renderAdminSettings() {
+  const config = State.config;
+  const wl = config.workLocation;
+  const sched = config.schedule || DEFAULT_SCHEDULE;
+  const schedFields = EVENT_ORDER.map(t => `
+    <label>${sched[t].icon} ${sched[t].label}</label>
+    <input type="time" id="sched-${t}" value="${sched[t].target}">
+  `).join('');
+
+  return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Configuración</div>
+        <div class="section-sub">Sesión: ${State.adminUser?.email || ''}</div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>📍 Ubicación de trabajo</h3>
+      <div class="sub">Los empleados solo podrán registrar asistencia dentro de este radio. <strong>Importante:</strong> debes capturarla desde la ubicación física del trabajo.</div>
+      ${wl ? `
+        <div style="background:var(--bg); padding:14px; border-radius:8px; margin-bottom:14px; font-family:'Geist Mono',monospace; font-size:13px;">
+          <div>Lat: ${wl.lat.toFixed(6)}</div>
+          <div>Lng: ${wl.lng.toFixed(6)}</div>
+          <div>Radio: ${wl.radius} m</div>
+          <div style="margin-top:6px;"><a href="https://www.google.com/maps?q=${wl.lat},${wl.lng}" target="_blank" style="color:var(--accent);">Ver en Google Maps ↗</a></div>
+        </div>` : `<div style="color:var(--warn); font-size:13px; margin-bottom:14px;">⚠ No configurada — los empleados pueden registrar desde cualquier lugar.</div>`}
+      <div class="field">
+        <label>Radio permitido (metros)</label>
+        <input type="number" id="settings-radius" value="${wl?.radius || 100}" min="20" max="2000">
+      </div>
+      <button class="btn btn-primary" data-action="capture-location">Usar mi ubicación actual como zona de trabajo</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>🕐 Horarios</h3>
+      <div class="sub">Hora programada para cada evento. Tolerancia: ${TOLERANCE_MIN} minutos.</div>
+      <div class="schedule-grid">${schedFields}</div>
+      <button class="btn btn-primary" data-action="save-schedule" style="margin-top:16px;">Guardar horarios</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>💰 Configuración de nómina</h3>
+      <div class="sub">Reglas para calcular sueldos, retardos y medios días.</div>
+      <div class="field">
+        <label>Hora límite para "medio día" (si llega tarde después de esta hora)</label>
+        <input type="time" id="payroll-halfday" value="${config.payroll.halfDayCutoff}">
+      </div>
+      <div class="field">
+        <label>Hora límite para "medio día" (si se va antes de esta hora)</label>
+        <input type="time" id="payroll-earlyleave" value="${config.payroll.earlyLeaveCutoff}">
+      </div>
+      <div class="field">
+        <label>Retardos sin descuento (los primeros N son gratis)</label>
+        <input type="number" id="payroll-freebies" value="${config.payroll.retardoFreebies}" min="0" max="10">
+      </div>
+      <div class="field">
+        <label>Descuento por cada retardo extra (MXN)</label>
+        <input type="number" id="payroll-charge" value="${config.payroll.retardoExtraCharge}" min="0" step="10">
+      </div>
+      <div style="background:var(--bg); padding:12px; border-radius:6px; margin-bottom:14px; font-size:13px; color:var(--text-dim);">
+        <strong style="color:var(--text);">Ejemplo con tus reglas actuales:</strong><br>
+        Si un empleado tiene ${config.payroll.retardoFreebies + 1} retardos en la semana, se le descontará 1 retardo cobrable × ${fmtMoney(config.payroll.retardoExtraCharge)} = <strong>${fmtMoney(config.payroll.retardoExtraCharge)}</strong>.<br>
+        Si llega después de las ${config.payroll.halfDayCutoff}, se le sugiere "medio día" automáticamente (tú decides si lo aceptas).
+      </div>
+      <button class="btn btn-primary" data-action="save-payroll-config">Guardar configuración</button>
+    </div>
+
+    <div class="settings-section">
+      <h3>🔐 Cuenta admin</h3>
+      <div class="sub">Cierra sesión o accede desde otro dispositivo con tu correo y contraseña.</div>
+      <button class="btn btn-danger" data-action="logout">Cerrar sesión</button>
+    </div>`;
+}
+
+/* ============================================================
+   HANDLERS
+   ============================================================ */
+function attachHandlers() {
+  const appEl = document.getElementById('app');
+
+  // Helper compartido para todos los clicks (sea en #app o en #modal-root)
+  const handleClick = async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (btn.dataset.stop === '1') e.stopPropagation();
+    await handleAction(action, btn, e);
+  };
+
+  appEl.onchange = async (e) => {
+    // Selector de ajuste de día
+    const select = e.target.closest('select[data-action="adjust-day"]');
+    if (select) {
+      const empId = select.dataset.emp;
+      const date = select.dataset.date;
+      const weekStart = select.dataset.week;
+      const value = select.value;
+      try {
+        if (value === 'auto') {
+          await deleteDoc(doc(db, 'payroll_adjustments', weekStart, 'items', `${empId}_${date}`));
+          toast('Ajuste removido', 'info', 1500);
+        } else {
+          await API.setDayAdjustment(weekStart, empId, date, { status: value });
+          toast('Día ajustado', 'success', 1500);
+        }
+        render();
+      } catch (err) { toast('Error: ' + err.message, 'error'); }
+      return;
+    }
+    // Selector de asignación de proyecto
+    const projSelect = e.target.closest('select[data-action="assign-project"]');
+    if (projSelect) {
+      const empId = projSelect.dataset.emp;
+      const date = projSelect.dataset.date;
+      const slot = projSelect.dataset.slot;
+      const projectId = projSelect.value;
+      try {
+        await API.setProjectAssignment(date, empId, slot, projectId);
+        toast('Proyecto asignado', 'success', 1200);
+      } catch (err) { toast('Error: ' + err.message, 'error'); }
+      return;
+    }
+  };
+
+  appEl.onclick = handleClick;
+  // CRÍTICO: el modal vive en #modal-root (fuera de #app), por eso necesita su propio handler
+  document.getElementById('modal-root').onclick = handleClick;
+}
+
+async function handleAction(action, btn, e) {
+
+    if (action === 'open-admin') {
+      go(State.adminUser ? 'admin' : 'admin-login');
+    }
+    else if (action === 'logout') {
+      await signOut(auth);
+      go('employee');
+    }
+    else if (action === 'back-employee') {
+      go('employee');
+    }
+    else if (action === 'admin-login') {
+      const email = document.getElementById('login-email').value.trim();
+      const pwd = document.getElementById('login-pwd').value;
+      btn.disabled = true; btn.textContent = 'Verificando…';
+      try {
+        await signInWithEmailAndPassword(auth, email, pwd);
+        // El listener onAuthStateChanged se encarga del redirect
+      } catch (e) {
+        toast('Correo o contraseña incorrectos', 'error');
+        btn.disabled = false; btn.textContent = 'Entrar';
+      }
+    }
+    else if (action === 'tab') {
+      State.adminTab = btn.dataset.tab;
+      if (btn.dataset.tab !== 'today' && State.unsubTodayEvents) {
+        State.unsubTodayEvents(); State.unsubTodayEvents = null;
+      }
+      render();
+    }
+    else if (action === 'add-emp') {
+      State.capturedDescriptors = [];
+      State.capturedPhoto = null;
+      State.adminTab = 'employees-add';
+      render();
+    }
+    else if (action === 'cancel-add-emp') {
+      stopCamera();
+      State.capturedDescriptors = [];
+      State.capturedPhoto = null;
+      State.adminTab = 'employees';
+      render();
+    }
+    else if (action === 'capture-shot') {
+      await captureShot();
+    }
+    else if (action === 'save-employee') {
+      await saveEmployee();
+    }
+    else if (action === 'delete-emp') {
+      const id = btn.dataset.id;
+      const emp = State.employees.find(e => e.id === id);
+      if (confirm(`¿Eliminar a ${emp.name}? Sus registros históricos no se borrarán.`)) {
+        try {
+          await API.deleteEmployee(id);
+          toast('Empleado eliminado', 'info');
+        } catch (e) { toast('Error: ' + e.message, 'error'); }
+      }
+    }
+    else if (action === 'edit-emp') {
+      State.editingEmpId = btn.dataset.id;
+      State.adminTab = 'employees-edit';
+      render();
+    }
+    else if (action === 'back-employees') {
+      State.adminTab = 'employees';
+      State.editingEmpId = null;
+      render();
+    }
+    else if (action === 'save-emp-edit') {
+      const id = State.editingEmpId;
+      const startDateInput = document.getElementById('edit-startdate');
+      const updates = {
+        weeklySalary: parseFloat(document.getElementById('edit-salary').value) || 0,
+        hourlyOvertimeRate: parseFloat(document.getElementById('edit-hourly').value) || 0,
+        extraDayRate: parseFloat(document.getElementById('edit-extraday').value) || 0,
+        startDate: startDateInput?.value || null
+      };
+      try {
+        await API.updateEmployee(id, updates);
+        // Refrescar lista local de empleados
+        State.employees = await API.getEmployees();
+        toast('Cambios guardados', 'success');
+        State.adminTab = 'employees';
+        State.editingEmpId = null;
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    // ----- NÓMINA -----
+    else if (action === 'payroll-prev-week') {
+      const d = new Date(State.payrollWeekStart + 'T00:00:00');
+      d.setDate(d.getDate() - 7);
+      State.payrollWeekStart = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      render();
+    }
+    else if (action === 'payroll-next-week') {
+      const d = new Date(State.payrollWeekStart + 'T00:00:00');
+      d.setDate(d.getDate() + 7);
+      State.payrollWeekStart = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      render();
+    }
+    else if (action === 'payroll-this-week') {
+      State.payrollWeekStart = getWeekStart(todayStr());
+      render();
+    }
+    else if (action === 'toggle-payroll-emp') {
+      const id = btn.dataset.id;
+      State.expandedPayrollEmp = State.expandedPayrollEmp === id ? null : id;
+      render();
+    }
+    else if (action === 'add-payroll-entry') {
+      showAddPayrollEntryModal(btn.dataset.emp, btn.dataset.week);
+    }
+    else if (action === 'save-payroll-entry') {
+      await savePayrollEntry(btn.dataset.emp, btn.dataset.week);
+    }
+    else if (action === 'del-payroll-entry') {
+      if (confirm('¿Eliminar este registro?')) {
+        try {
+          await API.deletePayrollEntry(btn.dataset.week, btn.dataset.id);
+          toast('Eliminado', 'info');
+          render();
+        } catch(e) { toast('Error: ' + e.message, 'error'); }
+      }
+    }
+    else if (action === 'close-modal') {
+      closeModal();
+    }
+    else if (action === 'export-payroll-csv') {
+      await exportPayrollCsv();
+    }
+    else if (action === 'print-payroll') {
+      printPayroll();
+    }
+    else if (action === 'print-all-receipts') {
+      printAllReceipts();
+    }
+    else if (action === 'save-payroll-config') {
+      const newPayroll = {
+        ...State.config.payroll,
+        halfDayCutoff: document.getElementById('payroll-halfday').value || '14:30',
+        earlyLeaveCutoff: document.getElementById('payroll-earlyleave').value || '14:30',
+        retardoFreebies: parseInt(document.getElementById('payroll-freebies').value) || 0,
+        retardoExtraCharge: parseFloat(document.getElementById('payroll-charge').value) || 0
+      };
+      try {
+        await API.setConfig({ ...State.config, payroll: newPayroll });
+        State.config = { ...State.config, payroll: newPayroll };
+        toast('Configuración de nómina guardada', 'success');
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'register') {
+      btn.disabled = true; btn.textContent = 'Guardando…';
+      await registerEvent(btn.dataset.emp, btn.dataset.evt);
+    }
+    else if (action === 'capture-location') {
+      btn.disabled = true; btn.textContent = 'Obteniendo ubicación…';
+      try {
+        const pos = await getCurrentPosition();
+        const radius = parseInt(document.getElementById('settings-radius').value) || 100;
+        const newConfig = { ...State.config, workLocation: { lat: pos.lat, lng: pos.lng, radius } };
+        await API.setConfig(newConfig);
+        State.config = newConfig;
+        toast(`Ubicación guardada (precisión: ${Math.round(pos.accuracy)}m)`, 'success');
+        render();
+      } catch (e) {
+        toast('No se pudo obtener la ubicación: ' + e.message, 'error');
+        btn.disabled = false; btn.textContent = 'Usar mi ubicación actual como zona de trabajo';
+      }
+    }
+    else if (action === 'save-schedule') {
+      const newSched = { ...State.config.schedule };
+      EVENT_ORDER.forEach(t => {
+        const v = document.getElementById('sched-' + t).value;
+        if (v) newSched[t] = { ...newSched[t], target: v };
+      });
+      try {
+        await API.setConfig({ ...State.config, schedule: newSched });
+        State.config = { ...State.config, schedule: newSched };
+        toast('Horarios guardados', 'success');
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'apply-filters') {
+      State.reportFrom = document.getElementById('filter-from').value;
+      State.reportTo = document.getElementById('filter-to').value;
+      State.reportEmployee = document.getElementById('filter-emp').value;
+      State.reportData = null;
+      render();
+    }
+    else if (action === 'export-csv') {
+      await exportCsv();
+    }
+    // ----- PROYECTOS -----
+    else if (action === 'add-project') {
+      const name = prompt('Nombre del proyecto:');
+      if (!name || !name.trim()) return;
+      try {
+        await API.addProject(name.trim());
+        State.projects = await API.getProjects();
+        toast('Proyecto creado', 'success');
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'rename-project') {
+      const id = btn.dataset.id;
+      const proj = State.projects.find(p => p.id === id);
+      const name = prompt('Nuevo nombre:', proj?.name || '');
+      if (!name || !name.trim()) return;
+      try {
+        await API.updateProject(id, { name: name.trim() });
+        State.projects = await API.getProjects();
+        toast('Proyecto actualizado', 'success');
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'delete-project') {
+      const id = btn.dataset.id;
+      const proj = State.projects.find(p => p.id === id);
+      if (!confirm(`¿Eliminar el proyecto "${proj?.name}"? Las asignaciones históricas se mantienen pero no podrás verlas con su nombre.`)) return;
+      try {
+        await API.deleteProject(id);
+        State.projects = await API.getProjects();
+        toast('Proyecto eliminado', 'info');
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'goto-project-report') {
+      State.adminTab = 'project-report';
+      render();
+    }
+    else if (action === 'back-projects') {
+      State.adminTab = 'projects';
+      render();
+    }
+    else if (action === 'apply-proj-filters') {
+      State.projectReportFrom = document.getElementById('proj-from').value;
+      State.projectReportTo = document.getElementById('proj-to').value;
+      render();
+    }
+    else if (action === 'export-proj-csv') {
+      await exportProjectCsv();
+    }
+    // ----- PRÉSTAMOS -----
+    else if (action === 'add-loan') {
+      showLoanModal();
+    }
+    else if (action === 'save-loan') {
+      await saveLoan();
+    }
+    else if (action === 'loan-payment') {
+      const id = btn.dataset.id;
+      const loan = State.loans.find(l => l.id === id);
+      const remaining = loan.totalAmount - (loan.paidAmount || 0);
+      const amt = prompt(`Monto del pago manual:\n\nMonto pendiente: ${fmtMoney(remaining)}\nAbono semanal habitual: ${fmtMoney(loan.weeklyPayment)}`);
+      if (!amt || isNaN(parseFloat(amt))) return;
+      const amount = parseFloat(amt);
+      if (amount <= 0) { toast('Monto inválido', 'error'); return; }
+      const note = prompt('Nota (opcional):', 'Pago manual') || '';
+      try {
+        const newPaid = (loan.paidAmount || 0) + amount;
+        const isFullyPaid = newPaid >= loan.totalAmount;
+        await API.updateLoan(id, {
+          paidAmount: newPaid,
+          status: isFullyPaid ? 'paid' : 'active'
+        });
+        await API.addLoanPayment(id, { amount, type: 'manual', note });
+        toast('Pago registrado', 'success');
+        State.loans = await API.getLoans();
+        State.expandedLoanId = id;
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'mark-loan-paid') {
+      if (!confirm('¿Marcar este préstamo como pagado por completo?')) return;
+      const id = btn.dataset.id;
+      const loan = State.loans.find(l => l.id === id);
+      try {
+        await API.updateLoan(id, { paidAmount: loan.totalAmount, status: 'paid' });
+        toast('Préstamo marcado como pagado', 'success');
+        State.loans = await API.getLoans();
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'toggle-loan-history') {
+      const id = btn.dataset.id;
+      State.expandedLoanId = State.expandedLoanId === id ? null : id;
+      render();
+    }
+    else if (action === 'del-loan-payment') {
+      if (!confirm('¿Eliminar este pago del historial? Se restará del total pagado.')) return;
+      const loanId = btn.dataset.loan;
+      const payId = btn.dataset.pay;
+      const amount = parseFloat(btn.dataset.amount) || 0;
+      const loan = State.loans.find(l => l.id === loanId);
+      try {
+        await deleteDoc(doc(db, 'loans', loanId, 'payments', payId));
+        await API.updateLoan(loanId, {
+          paidAmount: Math.max(0, (loan.paidAmount || 0) - amount),
+          status: 'active'
+        });
+        toast('Pago eliminado', 'info');
+        State.loans = await API.getLoans();
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'delete-loan') {
+      if (!confirm('¿Eliminar este préstamo?')) return;
+      try {
+        await API.deleteLoan(btn.dataset.id);
+        State.loans = await API.getLoans();
+        toast('Préstamo eliminado', 'info');
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'goto-loans') {
+      State.adminTab = 'loans';
+      render();
+    }
+    // ----- VACACIONES -----
+    else if (action === 'add-vacation') {
+      showVacationModal();
+    }
+    else if (action === 'save-vacation') {
+      await saveVacation();
+    }
+    else if (action === 'delete-vacation') {
+      if (!confirm('¿Eliminar este registro de vacaciones?')) return;
+      try {
+        await API.deleteVacation(btn.dataset.id);
+        State.vacations = await API.getVacations();
+        toast('Eliminado', 'info');
+        render();
+      } catch (e) { toast('Error: ' + e.message, 'error'); }
+    }
+    else if (action === 'view-vacations') {
+      const empId = btn.dataset.emp;
+      const emp = State.employees.find(e => e.id === empId);
+      const vacs = State.vacations.filter(v => v.empId === empId).sort((a,b) => b.startDate.localeCompare(a.startDate));
+      const html = vacs.length === 0
+        ? '<p style="color:var(--text-dim);">Sin vacaciones registradas.</p>'
+        : vacs.map(v => `<div style="padding:10px; background:var(--bg); border-radius:6px; margin-bottom:6px;"><strong>${v.days} días</strong> · ${fmtDateShort(v.startDate)} → ${fmtDateShort(v.endDate)}${v.note ? '<br><span style="font-size:12px; color:var(--text-muted);">'+v.note+'</span>' : ''}</div>`).join('');
+      document.getElementById('modal-root').innerHTML = `
+        <div class="modal-backdrop" id="modal-bd">
+          <div class="modal">
+            <h2>Vacaciones de ${emp.name}</h2>
+            <p class="modal-sub">Historial completo</p>
+            ${html}
+            <div class="modal-actions"><button class="btn" data-action="close-modal">Cerrar</button></div>
+          </div>
+        </div>`;
+      document.getElementById('modal-bd').addEventListener('click', (e) => {
+        if (e.target.id === 'modal-bd') closeModal();
+      });
+    }
+    // ----- RECIBO INDIVIDUAL -----
+    else if (action === 'print-receipt') {
+      printIndividualReceipt(btn.dataset.emp, btn.dataset.week);
+    }
+}
+
+/* ============================================================
+   RELOJ
+   ============================================================ */
+function startClock() {
+  const tick = () => {
+    const el = document.getElementById('live-clock');
+    if (el) {
+      const d = new Date();
+      el.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    }
+  };
+  tick();
+  if (State.clockInterval) clearInterval(State.clockInterval);
+  State.clockInterval = setInterval(tick, 1000);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+async function init() {
+  const loaderText = document.getElementById('loader-text');
+  loaderText.textContent = 'Conectando con Firebase…';
+
+  try {
+    State.config = await API.getConfig();
+  } catch (e) {
+    document.getElementById('loader').innerHTML = `
+      <div class="config-error">
+        <h2>⚠ Error de conexión</h2>
+        <p style="color: var(--text-dim);">No se pudo conectar con Firebase. Posibles causas:</p>
+        <ul style="color: var(--text-dim); padding-left: 20px; margin-top: 12px; line-height: 1.8;">
+          <li>Las reglas de seguridad de Firestore están mal configuradas</li>
+          <li>El proyecto Firebase no está activo</li>
+          <li>Los valores de configuración son incorrectos</li>
+        </ul>
+        <pre style="margin-top:16px;">${e.message}</pre>
+      </div>`;
+    return;
+  }
+
+  loaderText.textContent = 'Cargando reconocimiento facial…';
+  try {
+    await loadFaceModels();
+  } catch (e) {
+    document.getElementById('loader').innerHTML = `
+      <div class="config-error">
+        <h2>⚠ Error</h2>
+        <p style="color: var(--text-dim);">No se pudieron cargar los modelos de reconocimiento facial. Verifica tu conexión.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  await render();
+  startClock();
+}
+
+init();
+</script>
+</body>
+</html>
